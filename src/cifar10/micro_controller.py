@@ -53,7 +53,7 @@ class MicroController(Controller):
     self.num_branches = num_branches
 
     self.lstm_size = lstm_size
-    self.lstm_num_layers = lstm_num_layers 
+    self.lstm_num_layers = lstm_num_layers
     self.lstm_keep_prob = lstm_keep_prob
     self.tanh_constant = tanh_constant
     self.op_tanh_reduce = op_tanh_reduce
@@ -214,7 +214,7 @@ class MicroController(Controller):
       tf.constant([0.0], dtype=tf.float32, name="entropy"),
       tf.constant([0.0], dtype=tf.float32, name="log_prob"),
     ]
-    
+
     loop_outputs = tf.while_loop(_condition, _body, loop_vars,
                                  parallel_iterations=1)
 

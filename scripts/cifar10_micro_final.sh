@@ -1,16 +1,19 @@
 #!/bin/bash
 
 export PYTHONPATH="$(pwd)"
+#released
+#fixed_arc="0 2 0 0 0 4 0 1 0 4 1 1 1 0 0 1 0 2 1 1"
+#fixed_arc="$fixed_arc 1 0 1 0 0 3 0 2 1 1 3 1 1 0 0 4 0 3 1 1"
 
-fixed_arc="0 2 0 0 0 4 0 1 0 4 1 1 1 0 0 1 0 2 1 1"
-fixed_arc="$fixed_arc 1 0 1 0 0 3 0 2 1 1 3 1 1 0 0 4 0 3 1 1"
-
+#reproduce
+fixed_arc="0 0 1 0 1 0 1 1 3 1 0 0 1 4 0 3 1 1 0 0"
+fixed_arc="$fixed_arc 0 3 1 1 1 1 1 4 2 0 0 4 1 4 0 1 0 1 1 0"
 python src/cifar10/main.py \
   --data_format="NCHW" \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="outputs" \
+  --output_dir="../../models/enas/test/reproduce" \
   --batch_size=144 \
   --num_epochs=630 \
   --log_every=50 \

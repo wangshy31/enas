@@ -183,6 +183,7 @@ def get_ops(images, labels):
       "entropy": controller_model.sample_entropy,
       "sample_arc": controller_model.sample_arc,
       "skip_rate": controller_model.skip_rate,
+      "reward": controller_model.reward,
     }
   else:
     assert not FLAGS.controller_training, (
@@ -271,7 +272,7 @@ def train():
             log_string += " mins={:<10.2f}".format(
                 float(curr_time - start_time) / 60)
             print(log_string)
-            
+
           if actual_step % ops["eval_every"] == 0:
             if (FLAGS.controller_training and
                 epoch % FLAGS.controller_train_every == 0):
@@ -290,6 +291,7 @@ def train():
                 ]
                 loss, entropy, lr, gn, val_acc, bl, skip, _ = sess.run(run_ops)
                 controller_step = sess.run(controller_ops["train_step"])
+                controller_reward = sess.run(controller_ops["reward"])
 
                 if ct_step % FLAGS.log_every == 0:
                   curr_time = time.time()
