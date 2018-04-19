@@ -8,7 +8,7 @@ python src/imagenet/main.py \
   --reset_output_dir \
   --data_path="data/cifar10" \
   --output_dir="searched_outputs/imagenet/input32" \
-  --batch_size=160 \
+  --batch_size=80 \
   --num_epochs=150 \
   --log_every=50 \
   --eval_every_epochs=1 \

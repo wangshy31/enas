@@ -255,7 +255,7 @@ def train():
           global_step = sess.run(child_ops["global_step"])
 
           if FLAGS.child_sync_replicas:
-            actual_step = global_step * FLAGS.num_aggregate
+            actual_step = global_step * FLAGS.child_num_aggregate
           else:
             actual_step = global_step
           epoch = actual_step // ops["num_train_batches"]
