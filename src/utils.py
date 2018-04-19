@@ -150,7 +150,7 @@ def get_train_ops(
       grads = clipped
     else:
       raise NotImplementedError("Unknown clip_mode {}".format(clip_mode))
-  
+
   if lr_cosine:
     assert lr_max is not None, "Need lr_max to use lr_cosine"
     assert lr_min is not None, "Need lr_min to use lr_cosine"

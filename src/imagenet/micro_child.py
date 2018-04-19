@@ -21,11 +21,11 @@ from src.imagenet.image_ops import global_avg_pool
 from src.utils import count_model_params
 from src.utils import get_train_ops
 from src.common_ops import create_weight
+from src.imagenet.imagenet_data import ImagenetData
+import src.imagenet.image_processing as image_processing
 
 class MicroChild(Model):
   def __init__(self,
-               images,
-               labels,
                use_aux_heads=False,
                cutout_size=None,
                fixed_arc=None,
@@ -60,8 +60,6 @@ class MicroChild(Model):
     """
 
     super(self.__class__, self).__init__(
-      images,
-      labels,
       cutout_size=cutout_size,
       batch_size=batch_size,
       clip_mode=clip_mode,
@@ -790,31 +788,15 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      if not shuffle and self.data_format == "NCHW":
-        self.images["valid_original"] = np.transpose(
-          self.images["valid_original"], [0, 3, 1, 2])
-      x_valid_shuffle, y_valid_shuffle = tf.train.shuffle_batch(
-        [self.images["valid_original"], self.labels["valid_original"]],
-        batch_size=self.batch_size,
-        capacity=25000,
-        enqueue_many=True,
-        min_after_dequeue=0,
-        num_threads=16,
-        seed=self.seed,
-        allow_smaller_final_batch=True,
-      )
+      val_dataset = ImagenetData(subset='validation')
+      x_val, y_val = image_processing.distorted_inputs(
+          val_dataset,
+          num_preprocess_threads=16)
+      if self.data_format == "NCHW":
+          x_val = tf.transpose(x_val, [0, 3, 1, 2])
+      x_valid_shuffle = x_val
+      y_valid_shuffle = y_val
 
-      def _pre_process(x):
-        x = tf.pad(x, [[4, 4], [4, 4], [0, 0]])
-        x = tf.random_crop(x, [32, 32, 3], seed=self.seed)
-        x = tf.image.random_flip_left_right(x, seed=self.seed)
-        if self.data_format == "NCHW":
-          x = tf.transpose(x, [2, 0, 1])
-        return x
-
-      if shuffle:
-        x_valid_shuffle = tf.map_fn(
-          _pre_process, x_valid_shuffle, back_prop=False)
 
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
     valid_shuffle_preds = tf.argmax(logits, axis=1)
@@ -833,4 +815,4 @@ class MicroChild(Model):
 
     self._build_train()
     self._build_valid()
-    self._build_test()
+    #self._build_test()

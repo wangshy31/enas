@@ -13,12 +13,12 @@ from src.imagenet.image_ops import global_avg_pool
 
 from src.utils import count_model_params
 from src.utils import get_train_ops
+from src.imagenet.imagenet_data import ImagenetData
+import src.imagenet.image_processing as image_processing
 
 
 class Model(object):
   def __init__(self,
-               images,
-               labels,
                cutout_size=None,
                batch_size=32,
                eval_batch_size=100,
@@ -68,82 +68,36 @@ class Model(object):
     self.test_acc = None
     print "Build data ops"
     with tf.device("/cpu:0"):
-      # training data
-      self.num_train_examples = np.shape(images["train"])[0]
+      #read training data
+      train_dataset = ImagenetData(subset='train')
+      self.num_train_examples = train_dataset.num_examples_per_epoch()
       self.num_train_batches = (
         self.num_train_examples + self.batch_size - 1) // self.batch_size
-      x_train, y_train = tf.train.shuffle_batch(
-        [images["train"], labels["train"]],
-        batch_size=self.batch_size,
-        capacity=50000,
-        enqueue_many=True,
-        min_after_dequeue=0,
-        num_threads=16,
-        seed=self.seed,
-        allow_smaller_final_batch=True,
-      )
+      x_train, y_train = image_processing.distorted_inputs(
+        train_dataset,
+        num_preprocess_threads=16)
       self.lr_dec_every = lr_dec_every * self.num_train_batches
-
-      def _pre_process(x):
-        x = tf.pad(x, [[4, 4], [4, 4], [0, 0]])
-        x = tf.random_crop(x, [32, 32, 3], seed=self.seed)
-        x = tf.image.random_flip_left_right(x, seed=self.seed)
-        if self.cutout_size is not None:
-          mask = tf.ones([self.cutout_size, self.cutout_size], dtype=tf.int32)
-          start = tf.random_uniform([2], minval=0, maxval=32, dtype=tf.int32)
-          mask = tf.pad(mask, [[self.cutout_size + start[0], 32 - start[0]],
-                               [self.cutout_size + start[1], 32 - start[1]]])
-          mask = mask[self.cutout_size: self.cutout_size + 32,
-                      self.cutout_size: self.cutout_size + 32]
-          mask = tf.reshape(mask, [32, 32, 1])
-          mask = tf.tile(mask, [1, 1, 3])
-          x = tf.where(tf.equal(mask, 0), x=x, y=tf.zeros_like(x))
-        if self.data_format == "NCHW":
-          x = tf.transpose(x, [2, 0, 1])
-
-        return x
-      self.x_train = tf.map_fn(_pre_process, x_train, back_prop=False)
+      if self.data_format == "NCHW":
+        x_train = tf.transpose(x_train, [0, 3, 1, 2])
+      self.x_train = x_train #tf.map_fn(_pre_process, x_train, back_prop=False)
       self.y_train = y_train
 
-      # valid data
-      self.x_valid, self.y_valid = None, None
-      if images["valid"] is not None:
-        images["valid_original"] = np.copy(images["valid"])
-        labels["valid_original"] = np.copy(labels["valid"])
-        if self.data_format == "NCHW":
-          images["valid"] = tf.transpose(images["valid"], [0, 3, 1, 2])
-        self.num_valid_examples = np.shape(images["valid"])[0]
-        self.num_valid_batches = (
-          (self.num_valid_examples + self.eval_batch_size - 1)
-          // self.eval_batch_size)
-        self.x_valid, self.y_valid = tf.train.batch(
-          [images["valid"], labels["valid"]],
-          batch_size=self.eval_batch_size,
-          capacity=5000,
-          enqueue_many=True,
-          num_threads=1,
-          allow_smaller_final_batch=True,
-        )
 
-      # test data
+
+      #read validation data
+      val_dataset = ImagenetData(subset='validation')
+      self.num_valid_examples = val_dataset.num_examples_per_epoch()
+      self.num_valid_batches = (
+        (self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size)
+      x_val, y_val = image_processing.inputs(val_dataset)
       if self.data_format == "NCHW":
-        images["test"] = tf.transpose(images["test"], [0, 3, 1, 2])
-      self.num_test_examples = np.shape(images["test"])[0]
-      self.num_test_batches = (
-        (self.num_test_examples + self.eval_batch_size - 1)
-        // self.eval_batch_size)
-      self.x_test, self.y_test = tf.train.batch(
-        [images["test"], labels["test"]],
-        batch_size=self.eval_batch_size,
-        capacity=10000,
-        enqueue_many=True,
-        num_threads=1,
-        allow_smaller_final_batch=True,
-      )
+        x_val = tf.transpose(x_val, [0, 3, 1, 2])
+      self.x_valid = x_val
+      self.y_valid = y_val
 
     # cache images and labels
-    self.images = images
-    self.labels = labels
+    #self.images = images
+    #self.labels = labels
 
   def eval_once(self, sess, eval_set, feed_dict=None, verbose=False):
     """Expects self.acc and self.global_step to be defined.

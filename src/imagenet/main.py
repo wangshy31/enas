@@ -23,8 +23,11 @@ from src.imagenet.data_utils import read_data
 from src.imagenet.general_controller import GeneralController
 from src.imagenet.general_child import GeneralChild
 
+
 from src.imagenet.micro_controller import MicroController
 from src.imagenet.micro_child import MicroChild
+#from src import data
+#from src.data.imagenet_data import ImagenetData
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -90,11 +93,9 @@ DEFINE_boolean("controller_use_critic", False, "")
 DEFINE_integer("log_every", 50, "How many steps to log")
 DEFINE_integer("eval_every_epochs", 1, "How many epochs to eval")
 
-def get_ops(images, labels):
+def get_ops():
   """
   Args:
-    images: dict with keys {"train", "valid", "test"}.
-    labels: dict with keys {"train", "valid", "test"}.
   """
 
   assert FLAGS.search_for is not None, "Please specify --search_for"
@@ -107,8 +108,6 @@ def get_ops(images, labels):
     ChildClass = GeneralChild
 
   child_model = ChildClass(
-    images,
-    labels,
     use_aux_heads=FLAGS.child_use_aux_heads,
     cutout_size=FLAGS.child_cutout_size,
     whole_channels=FLAGS.controller_search_whole_channels,
@@ -215,14 +214,14 @@ def get_ops(images, labels):
 
 
 def train():
-  if FLAGS.child_fixed_arc is None:
-    images, labels = read_data(FLAGS.data_path)
-  else:
-    images, labels = read_data(FLAGS.data_path, num_valids=0)
+  #if FLAGS.child_fixed_arc is None:
+    #images, labels = read_data(FLAGS.data_path)
+  #else:
+    #images, labels = read_data(FLAGS.data_path, num_valids=0)
 
   g = tf.Graph()
   with g.as_default():
-    ops = get_ops(images, labels)
+    ops = get_ops()
     child_ops = ops["child"]
     controller_ops = ops["controller"]
 
