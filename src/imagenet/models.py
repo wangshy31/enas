@@ -73,6 +73,10 @@ class Model(object):
       self.num_train_examples = train_dataset.num_examples_per_epoch()
       self.num_train_batches = (
         self.num_train_examples + self.batch_size - 1) // self.batch_size
+      print ('num_train_examples is : ')
+      print (self.num_train_examples)
+      print ('num_train_batches is : ')
+      print (self.num_train_batches)
       x_train, y_train = image_processing.distorted_inputs(
         train_dataset,
         num_preprocess_threads=16)

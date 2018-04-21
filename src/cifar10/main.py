@@ -200,6 +200,7 @@ def get_ops(images, labels):
     "train_acc": child_model.train_acc,
     "optimizer": child_model.optimizer,
     "num_train_batches": child_model.num_train_batches,
+    "x_train": child_model.x_train,
   }
 
   ops = {
@@ -249,10 +250,13 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
+            child_ops["x_train"],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, _ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, x_train,_ = sess.run(run_ops)
           global_step = sess.run(child_ops["global_step"])
+          print ('x_train shape!!!')
+          print (x_train.shape)
 
           if FLAGS.child_sync_replicas:
             actual_step = global_step * FLAGS.child_num_aggregate

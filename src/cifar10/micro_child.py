@@ -696,6 +696,17 @@ class MicroChild(Model):
     return out
 
   # override
+  def _weight_transfer_loss(self):
+      tf_variables = [
+          var for var in tf.trainable_variables() if (
+              var.name.startswith(self.name) and "aux_head" not in var.name and "conv_" in var.name)]
+      for var in tf_variable:
+          print (var)
+      return
+
+
+
+
   def _build_train(self):
     print("-" * 80)
     print("Build train graph")
@@ -703,6 +714,8 @@ class MicroChild(Model):
     log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
       logits=logits, labels=self.y_train)
     self.loss = tf.reduce_mean(log_probs)
+
+    #self._weight_transfer_loss()
 
     if self.use_aux_heads:
       log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -721,6 +734,10 @@ class MicroChild(Model):
     tf_variables = [
       var for var in tf.trainable_variables() if (
         var.name.startswith(self.name) and "aux_head" not in var.name)]
+    for var in tf_variables:
+        print (var)
+    #print ('tf_variables!!!!!!!!')
+    #print (tf_variables)
     self.num_vars = count_model_params(tf_variables)
     print("Model has {0} params".format(self.num_vars))
 

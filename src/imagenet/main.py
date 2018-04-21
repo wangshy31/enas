@@ -26,6 +26,7 @@ from src.imagenet.general_child import GeneralChild
 
 from src.imagenet.micro_controller import MicroController
 from src.imagenet.micro_child import MicroChild
+from PIL import Image
 #from src import data
 #from src.data.imagenet_data import ImagenetData
 
@@ -200,6 +201,8 @@ def get_ops():
     "optimizer": child_model.optimizer,
     "num_train_batches": child_model.num_train_batches,
     "normal_arc": tf.Print(child_model.normal_arc, [child_model.normal_arc]),
+    "x_train": child_model.x_train,
+    "y_train": tf.Print(child_model.y_train, [child_model.y_train]),
   }
 
   ops = {
@@ -243,23 +246,46 @@ def train():
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
         start_time = time.time()
+        count = 0
         while True:
           run_ops = [
             child_ops["loss"],
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            #child_ops['normal_arc'],
+            #child_ops['x_train'],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc,  _ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, _ = sess.run(run_ops)
+          #loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
+          #print ('x_train shape!!!!!')
+          #print (x_train.shape)
+          #for i in range(16):
+              #tmp = np.squeeze(x_train[i, : , : ,:])
+              #tmp = np.transpose(tmp, [1, 2, 0])
+              #tmp = (tmp/2.0+0.5)*255.0
+              #print (tmp)
+              #print ('begin transform')
+              #tmp = tmp.astype(np.uint8)
+              #print ('end transform')
+              #img = Image.fromarray(tmp)
+              #print ('hello1')
+              #img.save('results/'+str(i)+'.png')
+              #print ('hello2')
+
           global_step = sess.run(child_ops["global_step"])
 
           if FLAGS.child_sync_replicas:
-            actual_step = global_step * FLAGS.num_aggregate
+            actual_step = global_step * FLAGS.child_num_aggregate
           else:
             actual_step = global_step
+
           epoch = actual_step // ops["num_train_batches"]
+          #print ('log!!!!!!!!!!')
+          #print (actual_step)
+          #print (global_step)
+          #print (epoch)
+          #print (ops["num_train_batches"])
           curr_time = time.time()
           if global_step % FLAGS.log_every == 0:
             log_string = ""
@@ -276,6 +302,7 @@ def train():
 
           if actual_step % ops["eval_every"] == 0:
             if (FLAGS.controller_training and
+                epoch>0 and
                 epoch % FLAGS.controller_train_every == 0):
               print("Epoch {}: Training controller".format(epoch))
               for ct_step in range(FLAGS.controller_train_steps *
@@ -333,7 +360,7 @@ def train():
             print("Epoch {}: Eval".format(epoch))
             if FLAGS.child_fixed_arc is None:
               ops["eval_func"](sess, "valid")
-            ops["eval_func"](sess, "test")
+            #ops["eval_func"](sess, "test")
 
           if epoch >= FLAGS.num_epochs:
             break

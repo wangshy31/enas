@@ -44,7 +44,7 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('image_size', 32,
+tf.app.flags.DEFINE_integer('image_size', 224,
                             """Provide square images of this size.""")
 tf.app.flags.DEFINE_integer('num_preprocess_threads', 4,
                             """Number of preprocessing threads per tower. """
@@ -246,7 +246,7 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
                        image_with_distorted_box)
 
     # Crop the image to the specified bounding box.
-    distorted_image = tf.slice(image, bbox_begin, bbox_size)
+    distorted_image = image #tf.slice(image, bbox_begin, bbox_size)
 
     # This resizing operation may distort the images because the aspect
     # ratio is not respected. We select a resize method in a round robin
@@ -504,6 +504,15 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
 
     images = tf.cast(images, tf.float32)
     images = tf.reshape(images, shape=[batch_size, height, width, depth])
+    #for i in range(batch_size):
+        #tmp_img = tf.reshape(images[i, :, : ,:], shape=[height, width, depth])
+        #img_data_jpg = tf.image.convert_image_dtype(tmp_img, dtype=tf.uint8)
+        #encoded_image = tf.image.encode_png(img_data_jpg)
+        #with tf.gfile.GFile("results/"+str(i)+'.png',"wb") as f:
+            #f.write(encoded_image.eval())
+    #IMAGENET_MEAN = tf.constant([-123.68, -116.779, -103.939])
+    #images = tf.add(images,  IMAGENET_MEAN)
+
 
     # Display the training images in the visualizer.
     tf.summary.image('images', images)
