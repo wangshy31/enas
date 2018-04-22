@@ -44,7 +44,7 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('image_size', 224,
+tf.app.flags.DEFINE_integer('image_size', 64,
                             """Provide square images of this size.""")
 tf.app.flags.DEFINE_integer('num_preprocess_threads', 4,
                             """Number of preprocessing threads per tower. """

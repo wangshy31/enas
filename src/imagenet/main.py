@@ -253,12 +253,13 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            #child_ops['x_train'],
+            child_ops['y_train'],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, _ = sess.run(run_ops)
-          #loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
-          #print ('x_train shape!!!!!')
+          #loss, lr, gn, tr_acc, _ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
+          print ('x_train shape!!!!!')
+          print (y_train)
           #print (x_train.shape)
           #for i in range(16):
               #tmp = np.squeeze(x_train[i, : , : ,:])
@@ -302,7 +303,6 @@ def train():
 
           if actual_step % ops["eval_every"] == 0:
             if (FLAGS.controller_training and
-                epoch>0 and
                 epoch % FLAGS.controller_train_every == 0):
               print("Epoch {}: Training controller".format(epoch))
               for ct_step in range(FLAGS.controller_train_steps *

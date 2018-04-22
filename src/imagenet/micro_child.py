@@ -105,10 +105,10 @@ class MicroChild(Model):
       assert num_epochs is not None, "Need num_epochs to drop_path"
 
     pool_distance = self.num_layers // 3
-    self.pool_layers = [pool_distance, 2 * pool_distance + 1, 3 * pool_distance + 2]
+    self.pool_layers = [pool_distance, 2 * pool_distance + 1]#, 3 * pool_distance + 2]
 
     if self.use_aux_heads:
-      self.aux_head_indices = [self.pool_layers[-1] - 1]
+      self.aux_head_indices = [self.pool_layers[-1] + 1]
 
   def _factorized_reduction(self, x, out_filters, stride, is_training):
     """Reduces the shape of x without information loss due to striding."""
@@ -249,8 +249,8 @@ class MicroChild(Model):
           images, w, [1, 1, 2, 2], "SAME", data_format=self.data_format)
         x = batch_norm(x, is_training, data_format=self.data_format)
 
-        x  = tf.layers.max_pooling2d(
-            x, [3, 3], [2, 2], "SAME", data_format=self.actual_data_format)
+        #x  = tf.layers.max_pooling2d(
+            #x, [3, 3], [2, 2], "SAME", data_format=self.actual_data_format)
       if self.data_format == "NHCW":
         split_axis = 3
       elif self.data_format == "NCHW":
@@ -262,7 +262,7 @@ class MicroChild(Model):
       # building layers in the micro space
       # conv->pool->stage1(3)->stage2(4)->stage3(15/6)->stage4(3)
       out_filters = self.out_filters
-      for layer_id in range(self.num_layers + 3):
+      for layer_id in range(self.num_layers + 2):
         with tf.variable_scope("layer_{0}".format(layer_id)):
           if layer_id not in self.pool_layers:
             if self.fixed_arc is None:
@@ -320,7 +320,7 @@ class MicroChild(Model):
               aux_logits = global_avg_pool(aux_logits,
                                            data_format=self.data_format)
               inp_c = aux_logits.get_shape()[1].value
-              w = create_weight("w", [inp_c, 1000])
+              w = create_weight("w", [inp_c, 1001])
               aux_logits = tf.matmul(aux_logits, w)
               self.aux_logits = aux_logits
 
@@ -336,7 +336,7 @@ class MicroChild(Model):
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
         inp_c = self._get_C(x)
-        w = create_weight("w", [inp_c, 1000])
+        w = create_weight("w", [inp_c, 1001])
         x = tf.matmul(x, w)
     return x
 
