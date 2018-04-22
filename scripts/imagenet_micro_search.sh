@@ -7,7 +7,7 @@ python src/imagenet/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="searching/imagenet/input32" \
+  --output_dir="searching/imagenet/batch32_numcell5" \
   --batch_size=32 \
   --num_epochs=150 \
   --log_every=1 \
