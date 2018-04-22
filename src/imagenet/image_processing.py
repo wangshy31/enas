@@ -504,6 +504,10 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
 
     images = tf.cast(images, tf.float32)
     images = tf.reshape(images, shape=[batch_size, height, width, depth])
+
+
+    label_index_batch = tf.reshape(label_index_batch, [batch_size])
+    label_index_batch = label_index_batch - 1
     #for i in range(batch_size):
         #tmp_img = tf.reshape(images[i, :, : ,:], shape=[height, width, depth])
         #img_data_jpg = tf.image.convert_image_dtype(tmp_img, dtype=tf.uint8)
@@ -517,4 +521,5 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
     # Display the training images in the visualizer.
     tf.summary.image('images', images)
 
-    return images, tf.reshape(label_index_batch, [batch_size])
+
+    return images, label_index_batch

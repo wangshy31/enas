@@ -105,10 +105,10 @@ class MicroChild(Model):
       assert num_epochs is not None, "Need num_epochs to drop_path"
 
     pool_distance = self.num_layers // 3
-    self.pool_layers = [pool_distance, 2 * pool_distance + 1, 3 * pool_distance + 2]
+    self.pool_layers = [pool_distance, 2 * pool_distance, 3 * pool_distance]
 
     if self.use_aux_heads:
-      self.aux_head_indices = [self.pool_layers[-1] - 1]
+      self.aux_head_indices = [self.pool_layers[-1] + 1]
 
   def _factorized_reduction(self, x, out_filters, stride, is_training):
     """Reduces the shape of x without information loss due to striding."""

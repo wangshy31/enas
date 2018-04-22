@@ -253,13 +253,11 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            #child_ops['x_train'],
+            #child_ops['y_train'],
             child_ops["train_op"],
           ]
           loss, lr, gn, tr_acc, _ = sess.run(run_ops)
           #loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
-          #print ('x_train shape!!!!!')
-          #print (x_train.shape)
           #for i in range(16):
               #tmp = np.squeeze(x_train[i, : , : ,:])
               #tmp = np.transpose(tmp, [1, 2, 0])
