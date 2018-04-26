@@ -300,7 +300,6 @@ def train():
 
           if actual_step % ops["eval_every"] == 0:
             if (FLAGS.controller_training and
-                epoch>0 and
                 epoch % FLAGS.controller_train_every == 0):
               print("Epoch {}: Training controller".format(epoch))
               for ct_step in range(FLAGS.controller_train_steps *
