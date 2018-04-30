@@ -19,7 +19,7 @@ from src.cifar10.image_ops import drop_path
 from src.cifar10.image_ops import global_avg_pool
 
 from src.utils import count_model_params
-from src.utils import get_train_ops
+from src.utils import get_train_ops,get_multigpu_train_ops
 from src.common_ops import create_weight
 
 class MicroChild(Model):
@@ -54,6 +54,7 @@ class MicroChild(Model):
                num_replicas=None,
                data_format="NHWC",
                name="child",
+               num_gpu=1,
                **kwargs
               ):
     """
@@ -99,6 +100,7 @@ class MicroChild(Model):
     self.num_layers = num_layers
     self.num_cells = num_cells
     self.fixed_arc = fixed_arc
+    self.num_gpu = num_gpu
 
     self.global_step = tf.Variable(
       0, dtype=tf.int32, trainable=False, name="global_step")
@@ -237,6 +239,7 @@ class MicroChild(Model):
           y = batch_norm(y, is_training, data_format=self.data_format)
     return [x, y]
 
+
   def _model(self, images, is_training, reuse=False):
     """Compute the logits given the images."""
 
@@ -320,7 +323,7 @@ class MicroChild(Model):
               inp_c = aux_logits.get_shape()[1].value
               w = create_weight("w", [inp_c, 10])
               aux_logits = tf.matmul(aux_logits, w)
-              self.aux_logits = aux_logits
+              #self.aux_logits = aux_logits
 
           aux_head_variables = [
             var for var in tf.trainable_variables() if (
@@ -336,7 +339,7 @@ class MicroChild(Model):
         inp_c = self._get_C(x)
         w = create_weight("w", [inp_c, 10])
         x = tf.matmul(x, w)
-    return x
+    return x, aux_logits
 
   def _fixed_conv(self, x, f_size, out_filters, stride, is_training,
                   stack_convs=2):
@@ -734,10 +737,6 @@ class MicroChild(Model):
     tf_variables = [
       var for var in tf.trainable_variables() if (
         var.name.startswith(self.name) and "aux_head" not in var.name)]
-    for var in tf_variables:
-        print (var)
-    #print ('tf_variables!!!!!!!!')
-    #print (tf_variables)
     self.num_vars = count_model_params(tf_variables)
     print("Model has {0} params".format(self.num_vars))
 
@@ -833,6 +832,232 @@ class MicroChild(Model):
       self.normal_arc = fixed_arc[:4 * self.num_cells]
       self.reduce_arc = fixed_arc[4 * self.num_cells:]
 
-    self._build_train()
-    self._build_valid()
-    self._build_test()
+    self._build_multigpu_train()
+    self._build_multigpu_valid()
+    self._build_multigpu_test()
+
+  def average_gradients(self, tower_grads):
+      """Calculate the average gradient for each shared variable across all towers.
+
+      Note that this function provides a synchronization point across all towers.
+
+      Args:
+        tower_grads: List of lists of (gradient, variable) tuples. The outer list
+          is over individual gradients. The inner list is over the gradient
+          calculation for each tower.
+      Returns:
+         List of pairs of (gradient, variable) where the gradient has been averaged
+         across all towers.
+      """
+      average_grads = []
+      for i in range(len(tower_grads[0])):
+        # Note that each grad_and_vars looks like the following:
+        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+        grads = []
+        for j in range(self.num_gpu):
+            # Add 0 dimension to the gradients to represent the tower.
+            expanded_g = tf.expand_dims(tower_grads[j][i], 0)
+            grads.append(expanded_g)
+
+        grads = tf.concat(axis=0, values=grads)
+        grads = tf.reduce_mean(grads, 0)
+
+        # Keep in mind that the Variables are redundant because they are shared
+        # across towers. So .. we will just return the first tower's pointer to
+        # the Variable.
+        average_grads.append(grads)
+      return average_grads
+
+
+  def _build_multigpu_train(self):
+    """calculate train model by using mutiple gpus"""
+    print("-" * 80)
+    print("Build multi-gpu train graph")
+    image_splits = tf.split(self.x_train, self.num_gpu)
+    label_splits = tf.split(self.y_train, self.num_gpu)
+    tower_grads = []
+    tower_loss = []
+    tower_train_acc = []
+    single_loss = []
+    counter = 0
+    with tf.variable_scope(tf.get_variable_scope()) as scope:
+        for gpu_id in range(self.num_gpu):
+            with tf.device('/gpu:%s' % gpu_id):
+                with tf.name_scope('%s_%s' % ('tower', gpu_id)):
+                    logits, aux_logits = self._model(image_splits[gpu_id], is_training=True)
+                    log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=label_splits[gpu_id])
+                    loss = tf.reduce_mean(log_probs)
+                    single_loss.append(loss)
+                    if self.use_aux_heads:
+                        log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=aux_logits, labels=label_splits[gpu_id])
+                        aux_loss = tf.reduce_mean(log_probs)
+                        train_loss = loss + 0.4 * aux_loss
+                    else:
+                        train_loss = loss
+                    tower_loss.append(train_loss)
+                    train_preds = tf.argmax(logits, axis=1)
+                    train_preds = tf.to_int32(train_preds)
+                    train_acc = tf.equal(train_preds, label_splits[gpu_id])
+                    train_acc = tf.to_int32(train_acc)
+                    train_acc = tf.reduce_sum(train_acc)
+                    tf_variables = [
+                        var for var in tf.trainable_variables() if (
+                            var.name.startswith(self.name) and "aux_head" not in var.name)]
+                    if self.l2_reg > 0:
+                        l2_losses = []
+                        for var in tf_variables:
+                            l2_losses.append(tf.reduce_sum(var ** 2))
+                        l2_loss = tf.add_n(l2_losses)
+                        train_loss += self.l2_reg * l2_loss
+                    grads = tf.gradients(train_loss, tf_variables)
+                    tower_grads.append(grads)
+                    tower_loss.append(train_loss)
+                    tower_train_acc.append(train_acc)
+                    tf.get_variable_scope().reuse_variables()
+    mean_loss = tf.stack(axis=0, values=tower_loss)
+    mean_loss = tf.reduce_mean(mean_loss, 0)
+    self.loss = mean_loss
+    self.single_loss = single_loss
+    #mean_grads = tf.stack(axis=0, values=tower_grads)
+    mean_grads = self.average_gradients(tower_grads) #tf.reduce_mean(mean_grads, 0)
+    mean_acc = tf.stack(axis=0, values=tower_train_acc)
+    self.train_acc = tf.reduce_mean(mean_acc, 0)
+
+    #self.train_preds = tf.argmax(logits, axis=1)
+    #self.train_preds = tf.to_int32(self.train_preds)
+    #self.train_acc = tf.equal(self.train_preds, self.y_train)
+    #self.train_acc = tf.to_int32(self.train_acc)
+    #self.train_acc = tf.reduce_sum(self.train_acc)
+
+    tf_variables = [
+      var for var in tf.trainable_variables() if (
+        var.name.startswith(self.name) and "aux_head" not in var.name)]
+    self.num_vars = count_model_params(tf_variables)
+    print("Model has {0} params".format(self.num_vars))
+
+    self.train_op, self.lr, self.grad_norm, self.optimizer = get_multigpu_train_ops(
+      mean_grads,
+      tf_variables,
+      self.global_step,
+      clip_mode=self.clip_mode,
+      grad_bound=self.grad_bound,
+      l2_reg=self.l2_reg,
+      lr_init=self.lr_init,
+      lr_dec_start=self.lr_dec_start,
+      lr_dec_every=self.lr_dec_every,
+      lr_dec_rate=self.lr_dec_rate,
+      lr_cosine=self.lr_cosine,
+      lr_max=self.lr_max,
+      lr_min=self.lr_min,
+      lr_T_0=self.lr_T_0,
+      lr_T_mul=self.lr_T_mul,
+      num_train_batches=self.num_train_batches,
+      optim_algo=self.optim_algo,
+      sync_replicas=self.sync_replicas,
+      num_aggregate=self.num_aggregate,
+      num_replicas=self.num_replicas)
+
+  def _build_multigpu_valid(self):
+    print("-" * 80)
+    print("Build multi-gpu val graph")
+    if self.x_valid is not None:
+        image_splits = tf.split(self.x_valid, self.num_gpu)
+        label_splits = tf.split(self.y_valid, self.num_gpu)
+        total_valid_acc = []
+        counter = 0
+        with tf.variable_scope(tf.get_variable_scope()) as scope:
+            for gpu_id in range(self.num_gpu):
+                with tf.device('/gpu:%s' % gpu_id):
+                    with tf.name_scope('%s_%s' % ('tower', gpu_id)):
+                        logits, aux_logits = self._model(image_splits[gpu_id], False, reuse=True)
+                        valid_preds = tf.argmax(logits, axis=1)
+                        valid_preds = tf.to_int32(valid_preds)
+                        valid_acc = tf.equal(valid_preds, label_splits[gpu_id])
+                        valid_acc = tf.to_int32(valid_acc)
+                        valid_acc = tf.reduce_sum(valid_acc)
+                        total_valid_acc.append(valid_acc)
+
+        mean_valid_acc = tf.stack(axis=0, values=total_valid_acc)
+        mean_valid_acc = tf.reduce_mean(mean_valid_acc, 0)
+        self.valid_acc = mean_valid_acc
+
+
+  # override
+  def _build_multigpu_test(self):
+    print("-" * 80)
+    print("Build multigpu test graph")
+    image_splits = tf.split(self.x_test, self.num_gpu)
+    label_splits = tf.split(self.y_test, self.num_gpu)
+    total_test_acc = []
+    counter = 0
+    with tf.variable_scope(tf.get_variable_scope()) as scope:
+        for gpu_id in range(self.num_gpu):
+            with tf.device('/gpu:%s' % gpu_id):
+                with tf.name_scope('%s_%s' % ('tower', gpu_id)):
+                    logits, aux_logits = self._model(image_splits[gpu_id], False, reuse=True)
+                    test_preds = tf.argmax(logits, axis=1)
+                    test_preds = tf.to_int32(test_preds)
+                    test_acc = tf.equal(test_preds, label_splits[gpu_id])
+                    test_acc = tf.to_int32(test_acc)
+                    test_acc = tf.reduce_sum(test_acc)
+                    total_test_acc.append(test_acc)
+
+    mean_test_acc = tf.stack(axis=0, values=total_test_acc)
+    mean_test_acc = tf.reduce_mean(mean_test_acc, 0)
+    self.test_acc = mean_test_acc
+
+
+  # override
+  def build_multigpu_valid_rl(self, shuffle=False):
+    print("-" * 80)
+    print("Build valid graph on shuffled data")
+    with tf.device("/cpu:0"):
+      # shuffled valid data: for choosing validation model
+      if not shuffle and self.data_format == "NCHW":
+        self.images["valid_original"] = np.transpose(
+          self.images["valid_original"], [0, 3, 1, 2])
+      x_valid_shuffle, y_valid_shuffle = tf.train.shuffle_batch(
+        [self.images["valid_original"], self.labels["valid_original"]],
+        batch_size=self.batch_size,
+        capacity=25000,
+        enqueue_many=True,
+        min_after_dequeue=0,
+        num_threads=16,
+        seed=self.seed,
+        allow_smaller_final_batch=True,
+      )
+
+      def _pre_process(x):
+        x = tf.pad(x, [[4, 4], [4, 4], [0, 0]])
+        x = tf.random_crop(x, [32, 32, 3], seed=self.seed)
+        x = tf.image.random_flip_left_right(x, seed=self.seed)
+        if self.data_format == "NCHW":
+          x = tf.transpose(x, [2, 0, 1])
+        return x
+
+      if shuffle:
+        x_valid_shuffle = tf.map_fn(
+          _pre_process, x_valid_shuffle, back_prop=False)
+
+
+    print("Build multi-gpu val graph")
+    image_splits = tf.split(x_valid_shuffle, self.num_gpu)
+    label_splits = tf.split(y_valid_shuffle, self.num_gpu)
+    total_valid_acc = []
+    counter = 0
+    with tf.variable_scope(tf.get_variable_scope()) as scope:
+        for gpu_id in range(self.num_gpu):
+            with tf.device('/gpu:%s' % gpu_id):
+                with tf.name_scope('%s_%s' % ('tower', gpu_id)):
+                    logits, aux_logits = self._model(image_splits[gpu_id], is_training=True, reuse=True)
+                    valid_shuffle_preds = tf.argmax(logits, axis=1)
+                    valid_shuffle_preds = tf.to_int32(valid_shuffle_preds)
+                    valid_shuffle_acc = tf.equal(valid_shuffle_preds, label_splits[gpu_id])
+                    valid_shuffle_acc = tf.to_int32(valid_shuffle_acc)
+                    valid_shuffle_acc = tf.reduce_sum(valid_shuffle_acc)
+                    total_valid_acc.append(valid_shuffle_acc)
+
+    mean_valid_acc = tf.stack(axis=0, values=total_valid_acc)
+    mean_valid_acc = tf.reduce_mean(mean_valid_acc, 0)
+    self.valid_shuffle_acc = mean_valid_acc
+

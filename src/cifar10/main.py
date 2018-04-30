@@ -89,6 +89,7 @@ DEFINE_boolean("controller_use_critic", False, "")
 
 DEFINE_integer("log_every", 50, "How many steps to log")
 DEFINE_integer("eval_every_epochs", 1, "How many epochs to eval")
+DEFINE_integer("num_gpu", 4, "How many gpus to use")
 
 def get_ops(images, labels):
   """
@@ -138,6 +139,7 @@ def get_ops(images, labels):
     sync_replicas=FLAGS.child_sync_replicas,
     num_aggregate=FLAGS.child_num_aggregate,
     num_replicas=FLAGS.child_num_replicas,
+    num_gpu=FLAGS.num_gpu,
   )
 
   if FLAGS.child_fixed_arc is None:
@@ -201,6 +203,7 @@ def get_ops(images, labels):
     "optimizer": child_model.optimizer,
     "num_train_batches": child_model.num_train_batches,
     "x_train": child_model.x_train,
+    "single_loss": child_model.single_loss,
   }
 
   ops = {
@@ -250,13 +253,13 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            child_ops["x_train"],
+            child_ops["single_loss"],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, x_train,_ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, single_loss,_ = sess.run(run_ops)
           global_step = sess.run(child_ops["global_step"])
-          print ('x_train shape!!!')
-          print (x_train.shape)
+          print ("single_Loss!!!")
+          print (single_loss)
 
           if FLAGS.child_sync_replicas:
             actual_step = global_step * FLAGS.child_num_aggregate

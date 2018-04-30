@@ -37,6 +37,7 @@ class Model(object):
                data_format="NHWC",
                name="generic_model",
                seed=None,
+               num_gpu=1,
               ):
     """
     Args:
@@ -62,7 +63,8 @@ class Model(object):
     self.data_format = data_format
     self.name = name
     self.seed = seed
-    
+    self.num_gpu = num_gpu
+
     self.global_step = None
     self.valid_acc = None
     self.test_acc = None
@@ -157,7 +159,7 @@ class Model(object):
     assert self.global_step is not None
     global_step = sess.run(self.global_step)
     print "Eval at {}".format(global_step)
-   
+
     if eval_set == "valid":
       assert self.x_valid is not None
       assert self.valid_acc is not None

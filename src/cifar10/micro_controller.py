@@ -229,7 +229,7 @@ class MicroController(Controller):
     return arc_seq, entropy, log_prob, last_c, last_h
 
   def build_trainer(self, child_model):
-    child_model.build_valid_rl()
+    child_model.build_multigpu_valid_rl()
     self.valid_acc = (tf.to_float(child_model.valid_shuffle_acc) /
                       tf.to_float(child_model.batch_size))
     self.reward = self.valid_acc
