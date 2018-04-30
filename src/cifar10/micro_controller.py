@@ -175,14 +175,14 @@ class MicroController(Controller):
       for i in range(2):  # op_1, op_2
         next_c, next_h = stack_lstm(inputs, prev_c, prev_h, self.w_lstm)
         prev_c, prev_h = next_c, next_h
-        logits = tf.matmul(next_h[-1], self.w_soft) + self.b_soft
+        logits = tf.matmul(next_h[-1], self.w_soft)# + self.b_soft
         if self.temperature is not None:
           logits /= self.temperature
         if self.tanh_constant is not None:
           op_tanh = self.tanh_constant / self.op_tanh_reduce
           logits = op_tanh * tf.tanh(logits)
-        if use_bias:
-          logits += self.b_soft_no_learn
+        #if use_bias:
+          #logits += self.b_soft_no_learn
         op_id = tf.multinomial(logits, 1)
         op_id = tf.to_int32(op_id)
         op_id = tf.reshape(op_id, [1])
