@@ -972,7 +972,7 @@ class MicroChild(Model):
                         total_valid_acc.append(valid_acc)
 
         mean_valid_acc = tf.stack(axis=0, values=total_valid_acc)
-        mean_valid_acc = tf.reduce_mean(mean_valid_acc, 0)
+        mean_valid_acc = tf.reduce_sum(mean_valid_acc, 0)
         self.valid_acc = mean_valid_acc
 
 
@@ -997,7 +997,7 @@ class MicroChild(Model):
                     total_test_acc.append(test_acc)
 
     mean_test_acc = tf.stack(axis=0, values=total_test_acc)
-    mean_test_acc = tf.reduce_mean(mean_test_acc, 0)
+    mean_test_acc = tf.reduce_sum(mean_test_acc, 0)
     self.test_acc = mean_test_acc
 
 
@@ -1052,6 +1052,6 @@ class MicroChild(Model):
                     total_valid_acc.append(valid_shuffle_acc)
 
     mean_valid_acc = tf.stack(axis=0, values=total_valid_acc)
-    mean_valid_acc = tf.reduce_mean(mean_valid_acc, 0)
+    mean_valid_acc = tf.reduce_sum(mean_valid_acc, 0)
     self.valid_shuffle_acc = mean_valid_acc
 
