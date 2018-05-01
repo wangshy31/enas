@@ -7,7 +7,7 @@ python src/cifar10/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="searching/cifar10/batch640_4gpu" \
+  --output_dir="/home/wangshiyao/Documents/workspace/RL/models/enas/train/cifar10/batch640_4gpu" \
   --batch_size=160 \
   --num_epochs=40 \
   --log_every=1 \

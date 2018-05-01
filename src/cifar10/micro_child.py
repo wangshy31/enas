@@ -699,15 +699,6 @@ class MicroChild(Model):
     return out
 
   # override
-  def _weight_transfer_loss(self):
-      tf_variables = [
-          var for var in tf.trainable_variables() if (
-              var.name.startswith(self.name) and "aux_head" not in var.name and "conv_" in var.name)]
-      for var in tf_variable:
-          print (var)
-      return
-
-
 
 
   def _build_train(self):
@@ -878,7 +869,7 @@ class MicroChild(Model):
     tower_grads = []
     tower_loss = []
     tower_train_acc = []
-    single_loss = []
+    tower_cls_loss = []
     counter = 0
     with tf.variable_scope(tf.get_variable_scope()) as scope:
         for gpu_id in range(self.num_gpu):
@@ -887,14 +878,13 @@ class MicroChild(Model):
                     logits, aux_logits = self._model(image_splits[gpu_id], is_training=True)
                     log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=label_splits[gpu_id])
                     loss = tf.reduce_mean(log_probs)
-                    single_loss.append(loss)
+                    tower_cls_loss.append(loss)
                     if self.use_aux_heads:
                         log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=aux_logits, labels=label_splits[gpu_id])
                         aux_loss = tf.reduce_mean(log_probs)
                         train_loss = loss + 0.4 * aux_loss
                     else:
                         train_loss = loss
-                    tower_loss.append(train_loss)
                     train_preds = tf.argmax(logits, axis=1)
                     train_preds = tf.to_int32(train_preds)
                     train_acc = tf.equal(train_preds, label_splits[gpu_id])
@@ -914,20 +904,24 @@ class MicroChild(Model):
                     tower_loss.append(train_loss)
                     tower_train_acc.append(train_acc)
                     tf.get_variable_scope().reuse_variables()
-    mean_loss = tf.stack(axis=0, values=tower_loss)
-    mean_loss = tf.reduce_mean(mean_loss, 0)
-    self.loss = mean_loss
-    self.single_loss = single_loss
-    #mean_grads = tf.stack(axis=0, values=tower_grads)
-    mean_grads = self.average_gradients(tower_grads) #tf.reduce_mean(mean_grads, 0)
-    mean_acc = tf.stack(axis=0, values=tower_train_acc)
-    self.train_acc = tf.reduce_mean(mean_acc, 0)
 
-    #self.train_preds = tf.argmax(logits, axis=1)
-    #self.train_preds = tf.to_int32(self.train_preds)
-    #self.train_acc = tf.equal(self.train_preds, self.y_train)
-    #self.train_acc = tf.to_int32(self.train_acc)
-    #self.train_acc = tf.reduce_sum(self.train_acc)
+    #only classification loss
+    cls_loss = tf.stack(axis=0, values=tower_cls_loss)
+    cls_loss = tf.reduce_mean(cls_loss, 0)
+    self.cls_loss = cls_loss
+
+    #all kinds of losses
+    total_loss = tf.stack(axis=0, values=tower_loss)
+    total_loss = tf.reduce_mean(total_loss, 0)
+    self.loss = total_loss
+    #mean_grads = tf.stack(axis=0, values=tower_grads)
+    #average gradients
+    mean_grads = self.average_gradients(tower_grads) #tf.reduce_mean(mean_grads, 0)
+    self.mean_grads = mean_grads
+
+    #accuracy
+    sum_acc = tf.stack(axis=0, values=tower_train_acc)
+    self.train_acc = tf.reduce_sum(sum_acc, 0)
 
     tf_variables = [
       var for var in tf.trainable_variables() if (

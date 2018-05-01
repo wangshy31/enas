@@ -202,8 +202,7 @@ def get_ops(images, labels):
     "train_acc": child_model.train_acc,
     "optimizer": child_model.optimizer,
     "num_train_batches": child_model.num_train_batches,
-    "x_train": child_model.x_train,
-    "single_loss": child_model.single_loss,
+    "cls_loss": child_model.cls_loss,
   }
 
   ops = {
@@ -253,13 +252,11 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            child_ops["single_loss"],
+            child_ops["cls_loss"],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, single_loss,_ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, cls_loss,_ = sess.run(run_ops)
           global_step = sess.run(child_ops["global_step"])
-          print ("single_Loss!!!")
-          print (single_loss)
 
           if FLAGS.child_sync_replicas:
             actual_step = global_step * FLAGS.child_num_aggregate
@@ -272,6 +269,7 @@ def train():
             log_string += "epoch={:<6d}".format(epoch)
             log_string += "ch_step={:<6d}".format(global_step)
             log_string += " loss={:<8.6f}".format(loss)
+            log_string += " cls loss={:<8.6f}".format(cls_loss)
             log_string += " lr={:<8.4f}".format(lr)
             log_string += " |g|={:<8.4f}".format(gn)
             log_string += " tr_acc={:<3d}/{:>3d}".format(
