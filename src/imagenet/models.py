@@ -37,6 +37,7 @@ class Model(object):
                data_format="NHWC",
                name="generic_model",
                seed=None,
+               num_gpu=1,
               ):
     """
     Args:
@@ -62,6 +63,7 @@ class Model(object):
     self.data_format = data_format
     self.name = name
     self.seed = seed
+    self.num_gpu = num_gpu
 
     self.global_step = None
     self.valid_acc = None

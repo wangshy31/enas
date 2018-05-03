@@ -93,6 +93,7 @@ DEFINE_boolean("controller_use_critic", False, "")
 
 DEFINE_integer("log_every", 50, "How many steps to log")
 DEFINE_integer("eval_every_epochs", 1, "How many epochs to eval")
+DEFINE_integer("num_gpu", 4, "How many gpus to use")
 
 def get_ops():
   """
@@ -138,6 +139,7 @@ def get_ops():
     sync_replicas=FLAGS.child_sync_replicas,
     num_aggregate=FLAGS.child_num_aggregate,
     num_replicas=FLAGS.child_num_replicas,
+    num_gpu=FLAGS.num_gpu,
   )
 
   if FLAGS.child_fixed_arc is None:
@@ -200,6 +202,7 @@ def get_ops():
     "train_acc": child_model.train_acc,
     "optimizer": child_model.optimizer,
     "num_train_batches": child_model.num_train_batches,
+    "cls_loss": child_model.cls_loss,
     "normal_arc": tf.Print(child_model.normal_arc, [child_model.normal_arc]),
     "x_train": child_model.x_train,
     "y_train": tf.Print(child_model.y_train, [child_model.y_train]),
@@ -253,10 +256,10 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            #child_ops['y_train'],
+            child_ops['cls_loss'],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, _ = sess.run(run_ops)
+          loss, lr, gn, tr_acc, cls_loss, _ = sess.run(run_ops)
           #loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
           #for i in range(16):
               #tmp = np.squeeze(x_train[i, : , : ,:])
@@ -290,6 +293,7 @@ def train():
             log_string += "epoch={:<6d}".format(epoch)
             log_string += "ch_step={:<6d}".format(global_step)
             log_string += " loss={:<8.6f}".format(loss)
+            log_string += " cls loss={:<8.6f}".format(cls_loss)
             log_string += " lr={:<8.4f}".format(lr)
             log_string += " |g|={:<8.4f}".format(gn)
             log_string += " tr_acc={:<3d}/{:>3d}".format(
@@ -316,7 +320,6 @@ def train():
                 ]
                 loss, entropy, lr, gn, val_acc, bl, skip, _ = sess.run(run_ops)
                 controller_step = sess.run(controller_ops["train_step"])
-                controller_reward = sess.run(controller_ops["reward"])
 
                 if ct_step % FLAGS.log_every == 0:
                   curr_time = time.time()

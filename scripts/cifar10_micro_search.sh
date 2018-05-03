@@ -7,10 +7,10 @@ python src/cifar10/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="/home/wangshiyao/Documents/workspace/RL/models/enas/train/cifar10/batch640_4gpu" \
-  --batch_size=160 \
-  --num_epochs=40 \
-  --log_every=1 \
+  --output_dir="searching/cifar10/batch480_4gpu" \
+  --batch_size=480 \
+  --num_epochs=50 \
+  --log_every=10 \
   --eval_every_epochs=1 \
   --child_use_aux_heads \
   --child_num_layers=6 \
@@ -25,7 +25,7 @@ python src/cifar10/main.py \
   --child_lr_min=0.0005 \
   --child_lr_T_0=10 \
   --child_lr_T_mul=2 \
-  --num_gpu=2 \
+  --num_gpu=4 \
   --controller_training \
   --controller_search_whole_channels \
   --controller_entropy_weight=0.0001 \

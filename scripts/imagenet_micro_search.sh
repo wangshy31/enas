@@ -7,8 +7,8 @@ python src/imagenet/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="searching/imagenet/batch32_numcell5" \
-  --batch_size=32 \
+  --output_dir="searching/imagenet/batch256" \
+  --batch_size=256 \
   --num_epochs=150 \
   --log_every=1 \
   --eval_every_epochs=1 \
@@ -25,6 +25,7 @@ python src/imagenet/main.py \
   --child_lr_min=0.0005 \
   --child_lr_T_0=10 \
   --child_lr_T_mul=2 \
+  --num_gpu=8 \
   --controller_training \
   --controller_search_whole_channels \
   --controller_entropy_weight=0.0001 \

@@ -34,7 +34,7 @@ import tensorflow as tf
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_string('data_dir', '/home/wangshiyao/Documents/data/imagenet/cls_tf',
+tf.app.flags.DEFINE_string('data_dir', '/mnt/lustre/share/images_tfrecords',
                            """Path to the processed data, i.e. """
                            """TFRecord of Example protos.""")
 
