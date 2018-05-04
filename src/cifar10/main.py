@@ -250,13 +250,11 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            child_ops["x_train"],
+            #child_ops["x_train"],
             child_ops["train_op"],
           ]
-          loss, lr, gn, tr_acc, x_train,_ = sess.run(run_ops)
+          loss, lr, gn, tr_acc,_ = sess.run(run_ops)
           global_step = sess.run(child_ops["global_step"])
-          print ('x_train shape!!!')
-          print (x_train.shape)
 
           if FLAGS.child_sync_replicas:
             actual_step = global_step * FLAGS.child_num_aggregate
@@ -295,7 +293,6 @@ def train():
                 ]
                 loss, entropy, lr, gn, val_acc, bl, skip, _ = sess.run(run_ops)
                 controller_step = sess.run(controller_ops["train_step"])
-                controller_reward = sess.run(controller_ops["reward"])
 
                 if ct_step % FLAGS.log_every == 0:
                   curr_time = time.time()
