@@ -248,6 +248,7 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
+        saver.restore(sess, "/mnt/lustre/wangshiyao/workspace/RL/program/enas/searching/imagenet/batch256/model.ckpt-105106")
         start_time = time.time()
         count = 0
         while True:
@@ -260,19 +261,6 @@ def train():
             child_ops["train_op"],
           ]
           loss, lr, gn, tr_acc, cls_loss, _ = sess.run(run_ops)
-          #loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
-          #for i in range(16):
-              #tmp = np.squeeze(x_train[i, : , : ,:])
-              #tmp = np.transpose(tmp, [1, 2, 0])
-              #tmp = (tmp/2.0+0.5)*255.0
-              #print (tmp)
-              #print ('begin transform')
-              #tmp = tmp.astype(np.uint8)
-              #print ('end transform')
-              #img = Image.fromarray(tmp)
-              #print ('hello1')
-              #img.save('results/'+str(i)+'.png')
-              #print ('hello2')
 
           global_step = sess.run(child_ops["global_step"])
 
@@ -282,11 +270,6 @@ def train():
             actual_step = global_step
 
           epoch = actual_step // ops["num_train_batches"]
-          #print ('log!!!!!!!!!!')
-          #print (actual_step)
-          #print (global_step)
-          #print (epoch)
-          #print (ops["num_train_batches"])
           curr_time = time.time()
           if global_step % FLAGS.log_every == 0:
             log_string = ""
@@ -360,7 +343,7 @@ def train():
             print("Epoch {}: Eval".format(epoch))
             if FLAGS.child_fixed_arc is None:
               ops["eval_func"](sess, "valid")
-            #ops["eval_func"](sess, "test")
+            ops["eval_func"](sess, "test")
 
           if epoch >= FLAGS.num_epochs:
             break
@@ -371,10 +354,10 @@ def main(_):
   if not os.path.isdir(FLAGS.output_dir):
     print("Path {} does not exist. Creating.".format(FLAGS.output_dir))
     os.makedirs(FLAGS.output_dir)
-  elif FLAGS.reset_output_dir:
-    print("Path {} exists. Remove and remake.".format(FLAGS.output_dir))
-    shutil.rmtree(FLAGS.output_dir)
-    os.makedirs(FLAGS.output_dir)
+  #elif FLAGS.reset_output_dir:
+    #print("Path {} exists. Remove and remake.".format(FLAGS.output_dir))
+    #shutil.rmtree(FLAGS.output_dir)
+    #os.makedirs(FLAGS.output_dir)
 
   print("-" * 80)
   log_file = os.path.join(FLAGS.output_dir, "stdout")
