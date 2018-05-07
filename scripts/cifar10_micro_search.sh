@@ -7,9 +7,9 @@ python src/cifar10/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="output" \
+  --output_dir="/home/wangshiyao/Documents/workspace/RL/models/enas/train/reproduce" \
   --batch_size=160 \
-  --num_epochs=150 \
+  --num_epochs=152 \
   --log_every=50 \
   --eval_every_epochs=1 \
   --child_use_aux_heads \

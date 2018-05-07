@@ -76,11 +76,12 @@ class MicroController(Controller):
     self.name = name
 
     self._create_params()
-    arc_seq_1, entropy_1, log_prob_1, c, h = self._build_sampler(use_bias=True)
-    arc_seq_2, entropy_2, log_prob_2, _, _ = self._build_sampler(prev_c=c, prev_h=h)
+    arc_seq_1, entropy_1, log_prob_1, c, h, log1 = self._build_sampler(use_bias=True)
+    arc_seq_2, entropy_2, log_prob_2, _, _, log2 = self._build_sampler(prev_c=c, prev_h=h)
     self.sample_arc = (arc_seq_1, arc_seq_2)
     self.sample_entropy = entropy_1 + entropy_2
     self.sample_log_prob = log_prob_1 + log_prob_2
+    self.logs = log1
 
   def _create_params(self):
     initializer = tf.random_uniform_initializer(minval=-0.1, maxval=0.1)
@@ -124,6 +125,7 @@ class MicroController(Controller):
     anchors_w_1 = tf.TensorArray(
       tf.float32, size=self.num_cells + 2, clear_after_read=False)
     arc_seq = tf.TensorArray(tf.int32, size=self.num_cells * 4)
+    logs = tf.TensorArray(tf.float32, size=self.num_cells*2)
     if prev_c is None:
       assert prev_h is None, "prev_c and prev_h must both be None"
       prev_c = [tf.zeros([1, self.lstm_size], tf.float32)
@@ -143,9 +145,10 @@ class MicroController(Controller):
       return tf.less(layer_id, self.num_cells + 2)
 
     def _body(layer_id, inputs, prev_c, prev_h, anchors, anchors_w_1, arc_seq,
-              entropy, log_prob):
+              entropy, log_prob, logs):
       indices = tf.range(0, layer_id, dtype=tf.int32)
       start_id = 4 * (layer_id - 2)
+      log_start_id = 2 * (layer_id - 2)
       prev_layers = []
       for i in range(2):  # index_1, index_2
         next_c, next_h = stack_lstm(inputs, prev_c, prev_h, self.w_lstm)
@@ -183,6 +186,9 @@ class MicroController(Controller):
           logits = op_tanh * tf.tanh(logits)
         if use_bias:
           logits += self.b_soft_no_learn
+        norm_logits = tf.nn.softmax(logits)
+        write_logs = tf.reshape(norm_logits, [-1])
+        logs = logs.write(log_start_id + i, write_logs)
         op_id = tf.multinomial(logits, 1)
         op_id = tf.to_int32(op_id)
         op_id = tf.reshape(op_id, [1])
@@ -201,7 +207,7 @@ class MicroController(Controller):
       inputs = self.g_emb
 
       return (layer_id + 1, inputs, next_c, next_h, anchors, anchors_w_1,
-              arc_seq, entropy, log_prob)
+              arc_seq, entropy, log_prob, logs)
 
     loop_vars = [
       tf.constant(2, dtype=tf.int32, name="layer_id"),
@@ -213,20 +219,23 @@ class MicroController(Controller):
       arc_seq,
       tf.constant([0.0], dtype=tf.float32, name="entropy"),
       tf.constant([0.0], dtype=tf.float32, name="log_prob"),
+      logs,
     ]
 
     loop_outputs = tf.while_loop(_condition, _body, loop_vars,
                                  parallel_iterations=1)
 
-    arc_seq = loop_outputs[-3].stack()
+    arc_seq = loop_outputs[-4].stack()
     arc_seq = tf.reshape(arc_seq, [-1])
-    entropy = tf.reduce_sum(loop_outputs[-2])
-    log_prob = tf.reduce_sum(loop_outputs[-1])
+    entropy = tf.reduce_sum(loop_outputs[-3])
+    log_prob = tf.reduce_sum(loop_outputs[-2])
 
-    last_c = loop_outputs[-7]
-    last_h = loop_outputs[-6]
+    last_c = loop_outputs[-8]
+    last_h = loop_outputs[-7]
+    logs_res = loop_outputs[-1].stack()
+    logs_res = tf.reshape(logs_res, [-1])
 
-    return arc_seq, entropy, log_prob, last_c, last_h
+    return arc_seq, entropy, log_prob, last_c, last_h, logs_res
 
   def build_trainer(self, child_model):
     child_model.build_valid_rl()

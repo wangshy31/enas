@@ -183,7 +183,7 @@ def get_ops(images, labels):
       "entropy": controller_model.sample_entropy,
       "sample_arc": controller_model.sample_arc,
       "skip_rate": controller_model.skip_rate,
-      "reward": controller_model.reward,
+      "logs": controller_model.logs,
     }
   else:
     assert not FLAGS.controller_training, (
@@ -243,6 +243,7 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
+        saver.restore(sess, "/home/wangshiyao/Documents/workspace/RL/models/enas/train/reproduce/model.ckpt-42300")
         start_time = time.time()
         while True:
           run_ops = [
@@ -309,15 +310,17 @@ def train():
                   print(log_string)
 
               print("Here are 10 architectures")
-              for _ in range(10):
-                arc, acc = sess.run([
+              for _ in range(10000):
+                arc, acc, logs = sess.run([
                   controller_ops["sample_arc"],
                   controller_ops["valid_acc"],
+                  controller_ops["logs"],
                 ])
                 if FLAGS.search_for == "micro":
                   normal_arc, reduce_arc = arc
                   print(np.reshape(normal_arc, [-1]))
                   print(np.reshape(reduce_arc, [-1]))
+                  print (logs)
                 else:
                   start = 0
                   for layer_id in range(FLAGS.child_num_layers):
@@ -344,10 +347,10 @@ def main(_):
   if not os.path.isdir(FLAGS.output_dir):
     print("Path {} does not exist. Creating.".format(FLAGS.output_dir))
     os.makedirs(FLAGS.output_dir)
-  elif FLAGS.reset_output_dir:
-    print("Path {} exists. Remove and remake.".format(FLAGS.output_dir))
-    shutil.rmtree(FLAGS.output_dir)
-    os.makedirs(FLAGS.output_dir)
+  #elif FLAGS.reset_output_dir:
+    #print("Path {} exists. Remove and remake.".format(FLAGS.output_dir))
+    #shutil.rmtree(FLAGS.output_dir)
+    #os.makedirs(FLAGS.output_dir)
 
   print("-" * 80)
   log_file = os.path.join(FLAGS.output_dir, "stdout")
