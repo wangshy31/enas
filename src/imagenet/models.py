@@ -92,7 +92,7 @@ class Model(object):
 
 
       #read validation data
-      val_dataset = ImagenetData(subset='valid')
+      val_dataset = ImagenetData(subset='searchvalid')
       self.num_valid_examples = val_dataset.num_examples_per_epoch()
       self.num_valid_batches = (
         (self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size)
@@ -107,7 +107,7 @@ class Model(object):
       self.y_valid = y_valid
 
       #read test data
-      test_dataset = ImagenetData(subset='test')
+      test_dataset = ImagenetData(subset='validation')
       self.num_test_examples = test_dataset.num_examples_per_epoch()
       self.num_test_batches = (
         (self.num_test_examples + self.eval_batch_size - 1) // self.eval_batch_size)

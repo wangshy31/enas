@@ -40,6 +40,7 @@ DEFINE_string("data_format", "NHWC", "'NHWC' or 'NCWH'")
 DEFINE_string("search_for", None, "Must be [macro|micro]")
 
 DEFINE_integer("batch_size", 32, "")
+DEFINE_integer("eval_batch_size", 100, "")
 
 DEFINE_integer("num_epochs", 300, "")
 DEFINE_integer("child_lr_dec_every", 100, "")
@@ -125,6 +126,7 @@ def get_ops():
     l2_reg=FLAGS.child_l2_reg,
     data_format=FLAGS.data_format,
     batch_size=FLAGS.batch_size,
+    eval_batch_size=FLAGS.eval_batch_size,
     clip_mode="norm",
     grad_bound=FLAGS.child_grad_bound,
     lr_init=FLAGS.child_lr,
@@ -218,10 +220,10 @@ def get_ops():
 
 
 def train():
-  #if FLAGS.child_fixed_arc is None:
-    #images, labels = read_data(FLAGS.data_path)
-  #else:
-    #images, labels = read_data(FLAGS.data_path, num_valids=0)
+  if FLAGS.child_fixed_arc is None:
+    images, labels = read_data(FLAGS.data_path)
+  else:
+    images, labels = read_data(FLAGS.data_path, num_valids=0)
 
   g = tf.Graph()
   with g.as_default():
@@ -246,7 +248,6 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
-        saver.restore(sess, "/mnt/lustre/wangshiyao/workspace/RL/program/enas/searching/imagenet/batch256/model.ckpt-105106")
         start_time = time.time()
         count = 0
         while True:

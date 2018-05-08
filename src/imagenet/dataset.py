@@ -34,7 +34,7 @@ import tensorflow as tf
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_string('data_dir', '/mnt/lustre/share/images_tfrecords',
+tf.app.flags.DEFINE_string('data_dir', '/mnt/lustre/wangshiyao/data/imagenet/',
                            """Path to the processed data, i.e. """
                            """TFRecord of Example protos.""")
 
@@ -67,7 +67,7 @@ class Dataset(object):
 
   def available_subsets(self):
     """Returns the list of available subsets."""
-    return ['train', 'valid', 'test']
+    return ['train', 'validation', 'searchvalid']
 
   def data_files(self):
     """Returns a python list of all (sharded) data subset files.

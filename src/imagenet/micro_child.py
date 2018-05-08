@@ -36,6 +36,7 @@ class MicroChild(Model):
                keep_prob=1.0,
                drop_path_keep_prob=None,
                batch_size=32,
+               eval_batch_size=100,
                clip_mode=None,
                grad_bound=None,
                l2_reg=1e-4,
@@ -64,6 +65,7 @@ class MicroChild(Model):
     super(self.__class__, self).__init__(
       cutout_size=cutout_size,
       batch_size=batch_size,
+      eval_batch_size=eval_batch_size,
       clip_mode=clip_mode,
       grad_bound=grad_bound,
       l2_reg=l2_reg,
@@ -323,7 +325,7 @@ class MicroChild(Model):
               aux_logits = global_avg_pool(aux_logits,
                                            data_format=self.data_format)
               inp_c = aux_logits.get_shape()[1].value
-              w = create_weight("w", [inp_c, 10])
+              w = create_weight("w", [inp_c, 1000])
               aux_logits = tf.matmul(aux_logits, w)
               self.aux_logits = aux_logits
 
@@ -339,7 +341,7 @@ class MicroChild(Model):
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
         inp_c = self._get_C(x)
-        w = create_weight("w", [inp_c, 10])
+        w = create_weight("w", [inp_c, 1000])
         x = tf.matmul(x, w)
     return x, aux_logits
 
@@ -827,7 +829,7 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='valid')
+      val_dataset = ImagenetData(subset='searchvalid')
       x_valid, y_valid = image_processing.distorted_inputs(
           val_dataset,
           batch_size = self.batch_size,
@@ -855,7 +857,7 @@ class MicroChild(Model):
 
     self._build_multigpu_train()
     self._build_multigpu_valid()
-    #self._build_multigpu_test()
+    self._build_multigpu_test()
     #self._build_train()
     #self._build_valid()
     #self._build_test()
@@ -1006,9 +1008,10 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='validation')
+      val_dataset = ImagenetData(subset='searchvalid')
       x_val, y_val = image_processing.distorted_inputs(
           val_dataset,
+          batch_size=self.eval_batch_size,
           num_preprocess_threads=16)
       if self.data_format == "NCHW":
           x_val = tf.transpose(x_val, [0, 3, 1, 2])
