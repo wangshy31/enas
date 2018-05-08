@@ -36,11 +36,11 @@ class ImagenetData(Dataset):
     """Returns the number of examples in the data set."""
     # Bounding box data consists of 615299 bounding boxes for 544546 images.
     if self.subset == 'train':
-      return 11984
-    if self.subset == 'val':
-      return 508
+      return 10968
+    if self.subset == 'valid':
+      return 1016
     else:
-        return 508
+        return 1016
 
   def download_message(self):
     """Instruction to download and extract the tarball from Flowers website."""

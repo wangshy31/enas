@@ -792,14 +792,15 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='val')
-      x_val, y_val = image_processing.distorted_inputs(
+      val_dataset = ImagenetData(subset='valid')
+      x_valid, y_valid = image_processing.distorted_inputs(
           val_dataset,
+          batch_size = self.batch_size,
           num_preprocess_threads=16)
       if self.data_format == "NCHW":
-          x_val = tf.transpose(x_val, [0, 3, 1, 2])
-      x_valid_shuffle = x_val
-      y_valid_shuffle = y_val
+          x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
+      x_valid_shuffle = x_valid
+      y_valid_shuffle = y_valid
 
 
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
@@ -819,4 +820,4 @@ class MicroChild(Model):
 
     self._build_train()
     self._build_valid()
-    #self._build_test()
+    self._build_test()

@@ -183,7 +183,6 @@ def get_ops():
       "entropy": controller_model.sample_entropy,
       "sample_arc": controller_model.sample_arc,
       "skip_rate": controller_model.skip_rate,
-      "reward": controller_model.reward,
     }
   else:
     assert not FLAGS.controller_training, (
@@ -202,7 +201,6 @@ def get_ops():
     "num_train_batches": child_model.num_train_batches,
     "normal_arc": tf.Print(child_model.normal_arc, [child_model.normal_arc]),
     "x_train": child_model.x_train,
-    "y_train": tf.Print(child_model.y_train, [child_model.y_train]),
   }
 
   ops = {
@@ -265,13 +263,9 @@ def train():
               #tmp = (tmp/2.0+0.5)*255.0
               #print ('begin transform')
               #tmp = tmp.astype(np.uint8)
-              #print (tmp.shape)
-              #print (tmp)
               #print ('end transform')
               #img = Image.fromarray(tmp, 'RGB')
-              #print ('hello1')
               #img.save('results/'+str(i)+'.png')
-              #print ('hello2')
 
           global_step = sess.run(child_ops["global_step"])
 
@@ -281,11 +275,6 @@ def train():
             actual_step = global_step
 
           epoch = actual_step // ops["num_train_batches"]
-          #print ('log!!!!!!!!!!')
-          #print (actual_step)
-          #print (global_step)
-          #print (epoch)
-          #print (ops["num_train_batches"])
           curr_time = time.time()
           if global_step % FLAGS.log_every == 0:
             log_string = ""
@@ -357,8 +346,10 @@ def train():
 
             print("Epoch {}: Eval".format(epoch))
             if FLAGS.child_fixed_arc is None:
-              ops["eval_func"](sess, "valid")
-            #ops["eval_func"](sess, "test")
+              eval_image = ops["eval_func"](sess, "valid")
+              #for i in range(len(eval_image)):
+                  #print (eval_image[i].shape)
+            ops["eval_func"](sess, "test")
 
           if epoch >= FLAGS.num_epochs:
             break
