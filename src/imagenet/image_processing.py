@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_integer('input_queue_memory_factor', 16,
                             """comments in code for more details.""")
 
 
-def inputs(dataset, batch_size=32, num_preprocess_threads=None):
+def inputs(dataset, batch_size=None, num_preprocess_threads=None):
   """Generate batches of ImageNet images for evaluation.
 
   Use this function as the inputs for evaluating a network.
@@ -88,9 +88,10 @@ def inputs(dataset, batch_size=32, num_preprocess_threads=None):
                                        image_size, 3].
     labels: 1-D integer Tensor of [FLAGS.batch_size].
   """
-  if not batch_size:
-    batch_size = FLAGS.batch_size
 
+  assert batch_size is not None
+  print ('val/test batch_size:')
+  print (batch_size)
   # Force all input processing onto CPU in order to reserve the GPU for
   # the forward inference and back-propagation.
   with tf.device('/cpu:0'):
@@ -122,8 +123,10 @@ def distorted_inputs(dataset, batch_size=None, num_preprocess_threads=None):
                                        FLAGS.image_size, 3].
     labels: 1-D integer Tensor of [batch_size].
   """
-  if not batch_size:
-    batch_size = FLAGS.batch_size
+
+  assert batch_size is not None
+  print ('train batch_size:')
+  print (FLAGS.batch_size)
 
   # Force all input processing onto CPU in order to reserve the GPU for
   # the forward inference and back-propagation.
@@ -388,6 +391,7 @@ def parse_example_proto(example_serialized):
 
   features = tf.parse_single_example(example_serialized, feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
+  label = label - 1
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
   ymin = tf.expand_dims(features['image/object/bbox/ymin'].values, 0)
@@ -504,19 +508,7 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
 
     images = tf.cast(images, tf.float32)
     images = tf.reshape(images, shape=[batch_size, height, width, depth])
-
-
     label_index_batch = tf.reshape(label_index_batch, [batch_size])
-    label_index_batch = label_index_batch - 1
-    #for i in range(batch_size):
-        #tmp_img = tf.reshape(images[i, :, : ,:], shape=[height, width, depth])
-        #img_data_jpg = tf.image.convert_image_dtype(tmp_img, dtype=tf.uint8)
-        #encoded_image = tf.image.encode_png(img_data_jpg)
-        #with tf.gfile.GFile("results/"+str(i)+'.png',"wb") as f:
-            #f.write(encoded_image.eval())
-    #IMAGENET_MEAN = tf.constant([-123.68, -116.779, -103.939])
-    #images = tf.add(images,  IMAGENET_MEAN)
-
 
     # Display the training images in the visualizer.
     tf.summary.image('images', images)

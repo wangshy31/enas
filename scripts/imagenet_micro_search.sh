@@ -10,7 +10,7 @@ python src/imagenet/main.py \
   --output_dir="searching/imagenet/batch256" \
   --batch_size=256 \
   --num_epochs=150 \
-  --log_every=1 \
+  --log_every=10 \
   --eval_every_epochs=1 \
   --child_use_aux_heads \
   --child_num_layers=6 \

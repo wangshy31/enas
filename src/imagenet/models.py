@@ -81,6 +81,7 @@ class Model(object):
       print (self.num_train_batches)
       x_train, y_train = image_processing.distorted_inputs(
         train_dataset,
+        batch_size = self.batch_size,
         num_preprocess_threads=16)
       self.lr_dec_every = lr_dec_every * self.num_train_batches
       if self.data_format == "NCHW":
@@ -91,19 +92,35 @@ class Model(object):
 
 
       #read validation data
-      val_dataset = ImagenetData(subset='validation')
+      val_dataset = ImagenetData(subset='valid')
       self.num_valid_examples = val_dataset.num_examples_per_epoch()
       self.num_valid_batches = (
         (self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size)
-      x_val, y_val = image_processing.inputs(val_dataset)
+      x_valid, y_valid = image_processing.inputs(val_dataset, batch_size=self.eval_batch_size)
+      print ('num_val_examples is : ')
+      print (self.num_valid_examples)
+      print ('num_val_batches is : ')
+      print (self.num_valid_batches)
       if self.data_format == "NCHW":
-        x_val = tf.transpose(x_val, [0, 3, 1, 2])
-      self.x_valid = x_val
-      self.y_valid = y_val
+        x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
+      self.x_valid = x_valid
+      self.y_valid = y_valid
 
-    # cache images and labels
-    #self.images = images
-    #self.labels = labels
+      #read test data
+      test_dataset = ImagenetData(subset='test')
+      self.num_test_examples = test_dataset.num_examples_per_epoch()
+      self.num_test_batches = (
+        (self.num_test_examples + self.eval_batch_size - 1) // self.eval_batch_size)
+      x_test, y_test = image_processing.inputs(test_dataset, batch_size=self.eval_batch_size)
+      print ('num_test_examples is : ')
+      print (self.num_test_examples)
+      print ('num_test_batches is : ')
+      print (self.num_test_batches)
+      if self.data_format == "NCHW":
+        x_test = tf.transpose(x_test, [0, 3, 1, 2])
+      self.x_test = x_test
+      self.y_test = y_test
+
 
   def eval_once(self, sess, eval_set, feed_dict=None, verbose=False):
     """Expects self.acc and self.global_step to be defined.
@@ -142,6 +159,8 @@ class Model(object):
         sys.stdout.write("\r{:<5d}/{:>5d}".format(total_acc, total_exp))
     if verbose:
       print ""
+    print "{}_acc_num/total_num: {:<6.4f}/{:<6.4f}".format(
+      eval_set, float(total_acc), float(total_exp))
     print "{}_accuracy: {:<6.4f}".format(
       eval_set, float(total_acc) / total_exp)
 

@@ -185,7 +185,6 @@ def get_ops():
       "entropy": controller_model.sample_entropy,
       "sample_arc": controller_model.sample_arc,
       "skip_rate": controller_model.skip_rate,
-      "reward": controller_model.reward,
     }
   else:
     assert not FLAGS.controller_training, (
@@ -205,7 +204,6 @@ def get_ops():
     "cls_loss": child_model.cls_loss,
     "normal_arc": tf.Print(child_model.normal_arc, [child_model.normal_arc]),
     "x_train": child_model.x_train,
-    "y_train": tf.Print(child_model.y_train, [child_model.y_train]),
   }
 
   ops = {

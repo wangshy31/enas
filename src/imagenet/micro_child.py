@@ -108,10 +108,10 @@ class MicroChild(Model):
       assert num_epochs is not None, "Need num_epochs to drop_path"
 
     pool_distance = self.num_layers // 3
-    self.pool_layers = [pool_distance, 2 * pool_distance, 3 * pool_distance+1]
+    self.pool_layers = [pool_distance, 2 * pool_distance + 1]#, 3 * pool_distance + 2]
 
     if self.use_aux_heads:
-      self.aux_head_indices = [self.pool_layers[-1]]
+      self.aux_head_indices = [self.pool_layers[-1] + 1]
 
   def _factorized_reduction(self, x, out_filters, stride, is_training):
     """Reduces the shape of x without information loss due to striding."""
@@ -265,7 +265,7 @@ class MicroChild(Model):
       # building layers in the micro space
       # conv->pool->stage1(3)->stage2(4)->stage3(15/6)->stage4(3)
       out_filters = self.out_filters
-      for layer_id in range(self.num_layers + 3):
+      for layer_id in range(self.num_layers + 2):
         with tf.variable_scope("layer_{0}".format(layer_id)):
           if layer_id not in self.pool_layers:
             if self.fixed_arc is None:
@@ -323,7 +323,7 @@ class MicroChild(Model):
               aux_logits = global_avg_pool(aux_logits,
                                            data_format=self.data_format)
               inp_c = aux_logits.get_shape()[1].value
-              w = create_weight("w", [inp_c, 1000])
+              w = create_weight("w", [inp_c, 10])
               aux_logits = tf.matmul(aux_logits, w)
               self.aux_logits = aux_logits
 
@@ -339,7 +339,7 @@ class MicroChild(Model):
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
         inp_c = self._get_C(x)
-        w = create_weight("w", [inp_c, 1000])
+        w = create_weight("w", [inp_c, 10])
         x = tf.matmul(x, w)
     return x, aux_logits
 
@@ -827,14 +827,15 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='validation')
-      x_val, y_val = image_processing.distorted_inputs(
+      val_dataset = ImagenetData(subset='valid')
+      x_valid, y_valid = image_processing.distorted_inputs(
           val_dataset,
+          batch_size = self.batch_size,
           num_preprocess_threads=16)
       if self.data_format == "NCHW":
-          x_val = tf.transpose(x_val, [0, 3, 1, 2])
-      x_valid_shuffle = x_val
-      y_valid_shuffle = y_val
+          x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
+      x_valid_shuffle = x_valid
+      y_valid_shuffle = y_valid
 
 
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)

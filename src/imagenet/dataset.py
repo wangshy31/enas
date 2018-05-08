@@ -59,10 +59,6 @@ class Dataset(object):
   def num_examples_per_epoch(self):
     """Returns the number of examples in the data subset."""
     pass
-    # if self.subset == 'train':
-    #   return 10000
-    # if self.subset == 'validation':
-    #   return 1000
 
   @abstractmethod
   def download_message(self):
@@ -71,7 +67,7 @@ class Dataset(object):
 
   def available_subsets(self):
     """Returns the list of available subsets."""
-    return ['train', 'validation']
+    return ['train', 'valid', 'test']
 
   def data_files(self):
     """Returns a python list of all (sharded) data subset files.
