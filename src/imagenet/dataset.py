@@ -34,7 +34,7 @@ import tensorflow as tf
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_string('data_dir', '/home/wangshiyao/Documents/data/imagenet/cls_tf',
+tf.app.flags.DEFINE_string('data_dir', '/home/wangshiyao/Documents/data/imagenet/10cls',
                            """Path to the processed data, i.e. """
                            """TFRecord of Example protos.""")
 
@@ -59,10 +59,12 @@ class Dataset(object):
   def num_examples_per_epoch(self):
     """Returns the number of examples in the data subset."""
     pass
-    # if self.subset == 'train':
-    #   return 10000
-    # if self.subset == 'validation':
-    #   return 1000
+     #if self.subset == 'train':
+       #return 11984
+     #if self.subset == 'val':
+       #return 508
+     #if self.subset == 'test':
+       #return 508
 
   @abstractmethod
   def download_message(self):
@@ -71,7 +73,7 @@ class Dataset(object):
 
   def available_subsets(self):
     """Returns the list of available subsets."""
-    return ['train', 'validation']
+    return ['train', 'val', 'test']
 
   def data_files(self):
     """Returns a python list of all (sharded) data subset files.

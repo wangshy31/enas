@@ -89,7 +89,7 @@ class Model(object):
 
 
       #read validation data
-      val_dataset = ImagenetData(subset='validation')
+      val_dataset = ImagenetData(subset='val')
       self.num_valid_examples = val_dataset.num_examples_per_epoch()
       self.num_valid_batches = (
         (self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size)
@@ -140,6 +140,8 @@ class Model(object):
         sys.stdout.write("\r{:<5d}/{:>5d}".format(total_acc, total_exp))
     if verbose:
       print ""
+    print "{}_acc/total: {:<6.4f}/{:<6.4f}".format(
+      eval_set, float(total_acc), float(total_exp))
     print "{}_accuracy: {:<6.4f}".format(
       eval_set, float(total_acc) / total_exp)
 

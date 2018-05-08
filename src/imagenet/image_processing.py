@@ -44,7 +44,7 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('image_size', 64,
+tf.app.flags.DEFINE_integer('image_size', 224,
                             """Provide square images of this size.""")
 tf.app.flags.DEFINE_integer('num_preprocess_threads', 4,
                             """Number of preprocessing threads per tower. """
@@ -388,6 +388,7 @@ def parse_example_proto(example_serialized):
 
   features = tf.parse_single_example(example_serialized, feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
+  label = label - 1
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
   ymin = tf.expand_dims(features['image/object/bbox/ymin'].values, 0)

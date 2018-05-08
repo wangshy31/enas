@@ -253,23 +253,22 @@ def train():
             child_ops["lr"],
             child_ops["grad_norm"],
             child_ops["train_acc"],
-            child_ops['y_train'],
+            #child_ops["x_train"],
             child_ops["train_op"],
           ]
-          #loss, lr, gn, tr_acc, _ = sess.run(run_ops)
-          loss, lr, gn, tr_acc, y_train, _ = sess.run(run_ops)
-          print ('x_train shape!!!!!')
-          print (y_train)
+          loss, lr, gn, tr_acc, _ = sess.run(run_ops)
+          #loss, lr, gn, tr_acc, x_train,  _ = sess.run(run_ops)
           #print (x_train.shape)
           #for i in range(16):
               #tmp = np.squeeze(x_train[i, : , : ,:])
               #tmp = np.transpose(tmp, [1, 2, 0])
               #tmp = (tmp/2.0+0.5)*255.0
-              #print (tmp)
               #print ('begin transform')
               #tmp = tmp.astype(np.uint8)
+              #print (tmp.shape)
+              #print (tmp)
               #print ('end transform')
-              #img = Image.fromarray(tmp)
+              #img = Image.fromarray(tmp, 'RGB')
               #print ('hello1')
               #img.save('results/'+str(i)+'.png')
               #print ('hello2')
@@ -319,7 +318,6 @@ def train():
                 ]
                 loss, entropy, lr, gn, val_acc, bl, skip, _ = sess.run(run_ops)
                 controller_step = sess.run(controller_ops["train_step"])
-                controller_reward = sess.run(controller_ops["reward"])
 
                 if ct_step % FLAGS.log_every == 0:
                   curr_time = time.time()

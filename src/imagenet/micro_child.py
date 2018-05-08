@@ -249,8 +249,8 @@ class MicroChild(Model):
           images, w, [1, 1, 2, 2], "SAME", data_format=self.data_format)
         x = batch_norm(x, is_training, data_format=self.data_format)
 
-        #x  = tf.layers.max_pooling2d(
-            #x, [3, 3], [2, 2], "SAME", data_format=self.actual_data_format)
+        x  = tf.layers.max_pooling2d(
+            x, [3, 3], [2, 2], "SAME", data_format=self.actual_data_format)
       if self.data_format == "NHCW":
         split_axis = 3
       elif self.data_format == "NCHW":
@@ -320,7 +320,7 @@ class MicroChild(Model):
               aux_logits = global_avg_pool(aux_logits,
                                            data_format=self.data_format)
               inp_c = aux_logits.get_shape()[1].value
-              w = create_weight("w", [inp_c, 1001])
+              w = create_weight("w", [inp_c, 10])
               aux_logits = tf.matmul(aux_logits, w)
               self.aux_logits = aux_logits
 
@@ -336,7 +336,7 @@ class MicroChild(Model):
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
         inp_c = self._get_C(x)
-        w = create_weight("w", [inp_c, 1001])
+        w = create_weight("w", [inp_c, 10])
         x = tf.matmul(x, w)
     return x
 
@@ -792,7 +792,7 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='validation')
+      val_dataset = ImagenetData(subset='val')
       x_val, y_val = image_processing.distorted_inputs(
           val_dataset,
           num_preprocess_threads=16)
