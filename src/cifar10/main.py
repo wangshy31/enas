@@ -140,7 +140,8 @@ def get_ops(images, labels):
     num_replicas=FLAGS.child_num_replicas,
   )
 
-  if FLAGS.child_fixed_arc is None:
+  #if FLAGS.child_fixed_arc is None:
+  if True : #FLAGS.child_fixed_arc is None:
     controller_model = ControllerClass(
       search_for=FLAGS.search_for,
       search_whole_channels=FLAGS.controller_search_whole_channels,
@@ -208,6 +209,8 @@ def get_ops(images, labels):
     "controller": controller_ops,
     "eval_every": child_model.num_train_batches * FLAGS.eval_every_epochs,
     "eval_func": child_model.eval_once,
+    "eval_10batch_func": child_model.eval_10batch,
+    "set_fixarc": child_model.set_fixarc,
     "num_train_batches": child_model.num_train_batches,
   }
 
@@ -215,13 +218,15 @@ def get_ops(images, labels):
 
 
 def train():
-  if FLAGS.child_fixed_arc is None:
-    images, labels = read_data(FLAGS.data_path)
-  else:
-    images, labels = read_data(FLAGS.data_path, num_valids=0)
+  #if FLAGS.child_fixed_arc is None:
+  images, labels = read_data(FLAGS.data_path)
+  #else:
+    #images, labels = read_data(FLAGS.data_path, num_valids=0)
 
   g = tf.Graph()
+  fixed = ''
   with g.as_default():
+    #FLAGS.child_fixed_arc = '0 1 1 1 0 1 1 0 1 1 0 0 0 0 0 1 2 1 1 4 0 0 1 2 0 3 1 3 1 1 0 3 1 1 0 2 0 3 0 1'
     ops = get_ops(images, labels)
     child_ops = ops["child"]
     controller_ops = ops["controller"]
@@ -243,100 +248,18 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
+        saver.restore(sess, "/home/wangshiyao/Documents/workspace/RL/models/enas/train/reproduce/model.ckpt-42300")
         start_time = time.time()
-        while True:
-          run_ops = [
-            child_ops["loss"],
-            child_ops["lr"],
-            child_ops["grad_norm"],
-            child_ops["train_acc"],
-            #child_ops["x_train"],
-            child_ops["train_op"],
-          ]
-          loss, lr, gn, tr_acc,_ = sess.run(run_ops)
-          global_step = sess.run(child_ops["global_step"])
-
-          if FLAGS.child_sync_replicas:
-            actual_step = global_step * FLAGS.child_num_aggregate
-          else:
-            actual_step = global_step
-          epoch = actual_step // ops["num_train_batches"]
-          curr_time = time.time()
-          if global_step % FLAGS.log_every == 0:
-            log_string = ""
-            log_string += "epoch={:<6d}".format(epoch)
-            log_string += "ch_step={:<6d}".format(global_step)
-            log_string += " loss={:<8.6f}".format(loss)
-            log_string += " lr={:<8.4f}".format(lr)
-            log_string += " |g|={:<8.4f}".format(gn)
-            log_string += " tr_acc={:<3d}/{:>3d}".format(
-                tr_acc, FLAGS.batch_size)
-            log_string += " mins={:<10.2f}".format(
-                float(curr_time - start_time) / 60)
-            print(log_string)
-
-          if actual_step % ops["eval_every"] == 0:
-            if (FLAGS.controller_training and
-                epoch % FLAGS.controller_train_every == 0):
-              print("Epoch {}: Training controller".format(epoch))
-              for ct_step in range(FLAGS.controller_train_steps *
-                                    FLAGS.controller_num_aggregate):
-                run_ops = [
-                  controller_ops["loss"],
-                  controller_ops["entropy"],
-                  controller_ops["lr"],
-                  controller_ops["grad_norm"],
-                  controller_ops["valid_acc"],
-                  controller_ops["baseline"],
-                  controller_ops["skip_rate"],
-                  controller_ops["train_op"],
-                ]
-                loss, entropy, lr, gn, val_acc, bl, skip, _ = sess.run(run_ops)
-                controller_step = sess.run(controller_ops["train_step"])
-
-                if ct_step % FLAGS.log_every == 0:
-                  curr_time = time.time()
-                  log_string = ""
-                  log_string += "ctrl_step={:<6d}".format(controller_step)
-                  log_string += " loss={:<7.3f}".format(loss)
-                  log_string += " ent={:<5.2f}".format(entropy)
-                  log_string += " lr={:<6.4f}".format(lr)
-                  log_string += " |g|={:<8.4f}".format(gn)
-                  log_string += " acc={:<6.4f}".format(val_acc)
-                  log_string += " bl={:<5.2f}".format(bl)
-                  log_string += " mins={:<.2f}".format(
-                      float(curr_time - start_time) / 60)
-                  print(log_string)
-
-              print("Here are 10 architectures")
-              for _ in range(10):
-                arc, acc = sess.run([
-                  controller_ops["sample_arc"],
-                  controller_ops["valid_acc"],
-                ])
-                if FLAGS.search_for == "micro":
-                  normal_arc, reduce_arc = arc
-                  print(np.reshape(normal_arc, [-1]))
-                  print(np.reshape(reduce_arc, [-1]))
-                else:
-                  start = 0
-                  for layer_id in range(FLAGS.child_num_layers):
-                    if FLAGS.controller_search_whole_channels:
-                      end = start + 1 + layer_id
-                    else:
-                      end = start + 2 * FLAGS.child_num_branches + layer_id
-                    print(np.reshape(arc[start: end], [-1]))
-                    start = end
-                print("val_acc={:<6.4f}".format(acc))
-                print("-" * 80)
-
-            print("Epoch {}: Eval".format(epoch))
-            if FLAGS.child_fixed_arc is None:
-              ops["eval_func"](sess, "valid")
-            ops["eval_func"](sess, "test")
-
-          if epoch >= FLAGS.num_epochs:
-            break
+        fixarc = sess.run([controller_ops["sample_arc"]])
+        fixarc = np.reshape(fixarc, [-1])
+        print(fixarc)
+        for i in fixarc:
+            fixed = fixed+str(i)+' '
+        fixed = fixed[0:-1]
+        sess.run(ops["set_fixarc"], feed_dict={fixarc: fixed})
+        ops["eval_func"](sess, "valid")
+        ops["eval_10batch_func"](sess, "valid")
+        print (fixed)
 
 
 def main(_):

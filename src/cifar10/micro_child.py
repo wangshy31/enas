@@ -263,7 +263,7 @@ class MicroChild(Model):
       for layer_id in range(self.num_layers + 2):
         with tf.variable_scope("layer_{0}".format(layer_id)):
           if layer_id not in self.pool_layers:
-            if self.fixed_arc is None:
+            if True:#self.fixed_arc is None:
               x = self._enas_layer(
                 layer_id, layers, self.normal_arc, out_filters)
             else:
@@ -272,7 +272,7 @@ class MicroChild(Model):
                 normal_or_reduction_cell="normal")
           else:
             out_filters *= 2
-            if self.fixed_arc is None:
+            if True : #self.fixed_arc is None:
               x = self._factorized_reduction(x, out_filters, 2, is_training)
               layers = [layers[-1], x]
               x = self._enas_layer(
@@ -734,8 +734,6 @@ class MicroChild(Model):
     tf_variables = [
       var for var in tf.trainable_variables() if (
         var.name.startswith(self.name) and "aux_head" not in var.name)]
-    for var in tf_variables:
-        print (var)
     #print ('tf_variables!!!!!!!!')
     #print (tf_variables)
     self.num_vars = count_model_params(tf_variables)
@@ -824,6 +822,12 @@ class MicroChild(Model):
     self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
     self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
     self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+
+  def set_fixarc(self, fixarc):
+      self.fixed_arc = fixarc
+      fixed_arc = np.array([int(x) for x in self.fixed_arc.split(" ") if x])
+      self.normal_arc = fixed_arc[:4 * self.num_cells]
+      self.reduce_arc = fixed_arc[4 * self.num_cells:]
 
   def connect_controller(self, controller_model):
     if self.fixed_arc is None:

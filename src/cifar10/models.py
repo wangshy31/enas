@@ -62,7 +62,7 @@ class Model(object):
     self.data_format = data_format
     self.name = name
     self.seed = seed
-    
+
     self.global_step = None
     self.valid_acc = None
     self.test_acc = None
@@ -145,6 +145,39 @@ class Model(object):
     self.images = images
     self.labels = labels
 
+  def eval_10batch(self, sess, eval_set, feed_dict=None, verbose=False):
+    """Expects self.acc and self.global_step to be defined.
+
+    Args:
+      sess: tf.Session() or one of its wrap arounds.
+      feed_dict: can be used to give more information to sess.run().
+      eval_set: "valid" or "test"
+    """
+
+    assert self.global_step is not None
+    global_step = sess.run(self.global_step)
+    print "Eval at {}".format(global_step)
+
+    if eval_set == "valid":
+      assert self.x_valid is not None
+      assert self.valid_acc is not None
+      num_examples = self.num_valid_examples
+      num_batches = self.num_valid_batches
+      acc_op = self.valid_acc
+    elif eval_set == "test":
+      assert self.test_acc is not None
+      num_examples = self.num_test_examples
+      num_batches = self.num_test_batches
+      acc_op = self.test_acc
+    else:
+      raise NotImplementedError("Unknown eval_set '{}'".format(eval_set))
+
+    for batch_id in xrange(10):
+      acc = sess.run(acc_op, feed_dict=feed_dict)
+      print "{}_num_acc batchsize accuracy: {:<6.4f} {:<6.4f} {:<6.4f}".format(
+      eval_set, float(acc), float(self.eval_batch_size), float(acc) / self.eval_batch_size)
+
+
   def eval_once(self, sess, eval_set, feed_dict=None, verbose=False):
     """Expects self.acc and self.global_step to be defined.
 
@@ -157,7 +190,7 @@ class Model(object):
     assert self.global_step is not None
     global_step = sess.run(self.global_step)
     print "Eval at {}".format(global_step)
-   
+
     if eval_set == "valid":
       assert self.x_valid is not None
       assert self.valid_acc is not None
@@ -184,6 +217,8 @@ class Model(object):
       print ""
     print "{}_accuracy: {:<6.4f}".format(
       eval_set, float(total_acc) / total_exp)
+
+
 
   def _build_train(self):
     print "Build train graph"
