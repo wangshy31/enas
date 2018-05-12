@@ -21,7 +21,7 @@ python src/cifar10/main.py \
   --child_keep_prob=0.90 \
   --child_drop_path_keep_prob=0.60 \
   --child_lr_cosine \
-  --child_lr_max=0.005 \
+  --child_lr_max=0.05 \
   --child_lr_min=0.0005 \
   --child_lr_T_0=10 \
   --child_lr_T_mul=2 \
