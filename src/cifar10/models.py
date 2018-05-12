@@ -172,7 +172,7 @@ class Model(object):
     else:
       raise NotImplementedError("Unknown eval_set '{}'".format(eval_set))
 
-    for batch_id in xrange(10):
+    for batch_id in xrange(100):
       acc = sess.run(acc_op, feed_dict=feed_dict)
       print "{}_num_acc batchsize accuracy: {:<6.4f} {:<6.4f} {:<6.4f}".format(
       eval_set, float(acc), float(self.eval_batch_size), float(acc) / self.eval_batch_size)

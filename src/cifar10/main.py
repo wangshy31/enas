@@ -250,16 +250,12 @@ def train():
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
         saver.restore(sess, "/home/wangshiyao/Documents/workspace/RL/models/enas/train/reproduce/model.ckpt-42300")
         start_time = time.time()
-        fixarc = sess.run([controller_ops["sample_arc"]])
-        fixarc = np.reshape(fixarc, [-1])
-        print(fixarc)
-        for i in fixarc:
-            fixed = fixed+str(i)+' '
-        fixed = fixed[0:-1]
-        sess.run(ops["set_fixarc"], feed_dict={fixarc: fixed})
+            #fixarc = sess.run([controller_ops["sample_arc"]])
+            #fixarc = np.reshape(fixarc, [-1])
+        print ('fixed arc is : ')
+        print (FLAGS.child_fixed_arc)
         ops["eval_func"](sess, "valid")
         ops["eval_10batch_func"](sess, "valid")
-        print (fixed)
 
 
 def main(_):
@@ -278,7 +274,10 @@ def main(_):
   sys.stdout = Logger(log_file)
 
   utils.print_user_flags()
-  train()
+  with open ('fixed_arc.txt') as f:
+      for line in f:
+          FLAGS.child_fixed_arc = line.strip('\n')
+          train()
 
 
 if __name__ == "__main__":

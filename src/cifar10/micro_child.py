@@ -825,9 +825,9 @@ class MicroChild(Model):
 
   def set_fixarc(self, fixarc):
       self.fixed_arc = fixarc
-      fixed_arc = np.array([int(x) for x in self.fixed_arc.split(" ") if x])
       self.normal_arc = fixed_arc[:4 * self.num_cells]
       self.reduce_arc = fixed_arc[4 * self.num_cells:]
+      print (self.fixed_arc)
 
   def connect_controller(self, controller_model):
     if self.fixed_arc is None:

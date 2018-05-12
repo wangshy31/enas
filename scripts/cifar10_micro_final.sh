@@ -6,8 +6,8 @@ export PYTHONPATH="$(pwd)"
 #fixed_arc="$fixed_arc 1 0 1 0 0 3 0 2 1 1 3 1 1 0 0 4 0 3 1 1"
 
 #reproduce
-fixed_arc="0 1 1 1 0 1 1 0 1 1 0 0 0 0 0 1 2 1 1 4"
-fixed_arc="$fixed_arc 0 0 1 2 0 3 1 3 1 1 0 3 1 1 0 2 0 3 0 1"
+fixed_arc="0 1 0 1 1 2 1 0 3 0 0 1 0 3 2 2 1 1 4 0"
+fixed_arc="$fixed_arc 1 3 1 4 0 1 0 0 0 1 1 0 0 0 0 3 0 0 3 1"
 python src/cifar10/main.py \
   --data_format="NCHW" \
   --search_for="micro" \
