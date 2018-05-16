@@ -23,6 +23,9 @@ from src.utils import get_train_ops
 from src.common_ops import create_weight
 from src.imagenet.imagenet_data import ImagenetData
 import src.imagenet.image_processing as image_processing
+from datasets import dataset_factory
+from preprocessing import preprocessing_factory
+slim = tf.contrib.slim
 
 class MicroChild(Model):
   def __init__(self,
@@ -54,6 +57,7 @@ class MicroChild(Model):
                num_replicas=None,
                data_format="NHWC",
                name="child",
+               num_readers=4,
                **kwargs
               ):
     """
@@ -75,7 +79,8 @@ class MicroChild(Model):
       num_aggregate=num_aggregate,
       num_replicas=num_replicas,
       data_format=data_format,
-      name=name)
+      name=name,
+      num_readers=num_readers)
 
     if self.data_format == "NHWC":
       self.actual_data_format = "channels_last"
@@ -105,7 +110,8 @@ class MicroChild(Model):
       assert num_epochs is not None, "Need num_epochs to drop_path"
 
     pool_distance = self.num_layers // 3
-    self.pool_layers = [pool_distance, 2 * pool_distance + 1]#, 3 * pool_distance + 2]
+    #self.pool_layers = [pool_distance, 2 * pool_distance + 1]#, 3 * pool_distance + 2]
+    self.pool_layers = [0, 3, 6]#, 3 * pool_distance + 2]
 
     if self.use_aux_heads:
       self.aux_head_indices = [self.pool_layers[-1] + 1]
@@ -194,7 +200,7 @@ class MicroChild(Model):
   def _apply_drop_path(self, x, layer_id):
     drop_path_keep_prob = self.drop_path_keep_prob
 
-    layer_ratio = float(layer_id + 1) / (self.num_layers + 2)
+    layer_ratio = float(layer_id + 1) / (self.num_layers + 3)
     drop_path_keep_prob = 1.0 - layer_ratio * (1.0 - drop_path_keep_prob)
 
     step_ratio = tf.to_float(self.global_step + 1) / tf.to_float(self.num_train_steps)
@@ -262,7 +268,7 @@ class MicroChild(Model):
       # building layers in the micro space
       # conv->pool->stage1(3)->stage2(4)->stage3(15/6)->stage4(3)
       out_filters = self.out_filters
-      for layer_id in range(self.num_layers + 2):
+      for layer_id in range(self.num_layers + 3):
         with tf.variable_scope("layer_{0}".format(layer_id)):
           if layer_id not in self.pool_layers:
             if self.fixed_arc is None:
@@ -320,7 +326,7 @@ class MicroChild(Model):
               aux_logits = global_avg_pool(aux_logits,
                                            data_format=self.data_format)
               inp_c = aux_logits.get_shape()[1].value
-              w = create_weight("w", [inp_c, 10])
+              w = create_weight("w", [inp_c, 1000])
               aux_logits = tf.matmul(aux_logits, w)
               self.aux_logits = aux_logits
 
@@ -336,7 +342,7 @@ class MicroChild(Model):
         x = tf.nn.dropout(x, self.keep_prob)
       with tf.variable_scope("fc"):
         inp_c = self._get_C(x)
-        w = create_weight("w", [inp_c, 10])
+        w = create_weight("w", [inp_c, 1000])
         x = tf.matmul(x, w)
     return x
 
@@ -792,16 +798,31 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = ImagenetData(subset='valid')
-      x_valid, y_valid = image_processing.distorted_inputs(
+      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      valid_provider = slim.dataset_data_provider.DatasetDataProvider(
           val_dataset,
-          batch_size = self.batch_size,
-          num_preprocess_threads=16)
+          num_readers=self.num_readers,
+          common_queue_capacity=20 * self.eval_batch_size,
+          common_queue_min=10 * self.eval_batch_size)
+      [x_valid, y_valid] = valid_provider.get(['image', 'label'])
+      y_valid -= self.labels_offset
+      y_valid = tf.cast(y_valid, tf.int32)
+      image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        "nasnet_large",
+        is_training=True)
+      x_valid = image_preprocessing_fn(x_valid, self.train_image_size, self.train_image_size)
+      x_valid, y_valid = tf.train.shuffle_batch(
+          [x_valid, y_valid],
+          batch_size=self.batch_size,
+          capacity=20 * self.eval_batch_size,
+          min_after_dequeue=0,
+          num_threads=16,
+          seed=self.seed,
+          allow_smaller_final_batch=True,)
       if self.data_format == "NCHW":
-          x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
+        x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
       x_valid_shuffle = x_valid
       y_valid_shuffle = y_valid
-
 
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
     valid_shuffle_preds = tf.argmax(logits, axis=1)
@@ -809,6 +830,8 @@ class MicroChild(Model):
     self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
     self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
     self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+
+
 
   def connect_controller(self, controller_model):
     if self.fixed_arc is None:

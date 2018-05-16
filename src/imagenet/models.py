@@ -13,8 +13,11 @@ from src.imagenet.image_ops import global_avg_pool
 
 from src.utils import count_model_params
 from src.utils import get_train_ops
-from src.imagenet.imagenet_data import ImagenetData
-import src.imagenet.image_processing as image_processing
+from datasets import dataset_factory
+from preprocessing import preprocessing_factory
+from imagenet_data import ImagenetData
+import image_processing
+slim = tf.contrib.slim
 
 
 class Model(object):
@@ -36,6 +39,7 @@ class Model(object):
                num_replicas=None,
                data_format="NHWC",
                name="generic_model",
+               num_readers=4,
                seed=None,
               ):
     """
@@ -61,6 +65,9 @@ class Model(object):
     self.num_replicas = num_replicas
     self.data_format = data_format
     self.name = name
+    self.num_readers = num_readers
+    self.labels_offset = 1
+    self.train_image_size = 224
     self.seed = seed
 
     self.global_step = None
@@ -69,56 +76,93 @@ class Model(object):
     print "Build data ops"
     with tf.device("/cpu:0"):
       #read training data
-      train_dataset = ImagenetData(subset='train')
-      self.num_train_examples = train_dataset.num_examples_per_epoch()
+      train_dataset = dataset_factory.get_dataset("imagenet", "train", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      provider = slim.dataset_data_provider.DatasetDataProvider(
+          train_dataset,
+          num_readers=self.num_readers,
+          common_queue_capacity=20 * self.batch_size,
+          common_queue_min=10 * self.batch_size)
+      [x_train, y_train] = provider.get(['image', 'label'])
+      y_train -= self.labels_offset
+      y_train = tf.cast(y_train, tf.int32)
+      image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        "nasnet_large",
+        is_training=True)
+      x_train = image_preprocessing_fn(x_train, self.train_image_size, self.train_image_size)
+
+      x_train, y_train = tf.train.shuffle_batch(
+          [x_train, y_train],
+          batch_size=self.batch_size,
+          capacity=20 * self.batch_size,
+          min_after_dequeue=0,
+          num_threads=16,
+          seed=self.seed,
+          allow_smaller_final_batch=True,)
+      self.num_train_examples = 125113
       self.num_train_batches = (
         self.num_train_examples + self.batch_size - 1) // self.batch_size
-      print ('num_train_examples is : ')
-      print (self.num_train_examples)
-      print ('num_train_batches is : ')
-      print (self.num_train_batches)
-      x_train, y_train = image_processing.distorted_inputs(
-        train_dataset,
-        batch_size = self.batch_size,
-        num_preprocess_threads=16)
       self.lr_dec_every = lr_dec_every * self.num_train_batches
       if self.data_format == "NCHW":
         x_train = tf.transpose(x_train, [0, 3, 1, 2])
-      self.x_train = x_train #tf.map_fn(_pre_process, x_train, back_prop=False)
+      self.x_train = x_train
       self.y_train = y_train
 
+      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      valid_provider = slim.dataset_data_provider.DatasetDataProvider(
+          val_dataset,
+          num_readers=self.num_readers,
+          common_queue_capacity=20 * self.eval_batch_size,
+          common_queue_min=10 * self.eval_batch_size)
+      [x_valid, y_valid] = valid_provider.get(['image', 'label'])
+      y_valid -= self.labels_offset
+      y_valid = tf.cast(y_valid, tf.int32)
+      image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        "nasnet_large",
+        is_training=False)
+      x_valid = image_preprocessing_fn(x_valid, self.train_image_size, self.train_image_size)
 
+      x_valid, y_valid = tf.train.batch(
+          [x_valid, y_valid],
+          batch_size=self.eval_batch_size,
+          num_threads=16,
+          capacity=5 * self.eval_batch_size)
 
-      #read validation data
-      val_dataset = ImagenetData(subset='valid')
-      self.num_valid_examples = val_dataset.num_examples_per_epoch()
+      self.num_valid_examples = 12511
       self.num_valid_batches = (
-        (self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size)
-      x_valid, y_valid = image_processing.inputs(val_dataset, batch_size=self.eval_batch_size)
-      print ('num_val_examples is : ')
-      print (self.num_valid_examples)
-      print ('num_val_batches is : ')
-      print (self.num_valid_batches)
+        self.num_valid_examples + self.eval_batch_size - 1) // self.eval_batch_size
       if self.data_format == "NCHW":
         x_valid = tf.transpose(x_valid, [0, 3, 1, 2])
       self.x_valid = x_valid
       self.y_valid = y_valid
 
-      #read test data
-      test_dataset = ImagenetData(subset='test')
-      self.num_test_examples = test_dataset.num_examples_per_epoch()
+
+      test_dataset = dataset_factory.get_dataset("imagenet", "test", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      test_provider = slim.dataset_data_provider.DatasetDataProvider(
+          test_dataset,
+          num_readers=self.num_readers,
+          common_queue_capacity=20 * self.eval_batch_size,
+          common_queue_min=10 * self.eval_batch_size)
+      [x_test, y_test] = test_provider.get(['image', 'label'])
+      y_test -= self.labels_offset
+      y_test = tf.cast(y_test, tf.int32)
+      image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        "nasnet_large",
+        is_training=False)
+      x_test = image_preprocessing_fn(x_test, self.train_image_size, self.train_image_size)
+
+      x_test, y_test = tf.train.batch(
+          [x_test, y_test],
+          batch_size=self.eval_batch_size,
+          num_threads=16,
+          capacity=5 * self.eval_batch_size)
+
+      self.num_test_examples = 12511
       self.num_test_batches = (
-        (self.num_test_examples + self.eval_batch_size - 1) // self.eval_batch_size)
-      x_test, y_test = image_processing.inputs(test_dataset, batch_size=self.eval_batch_size)
-      print ('num_test_examples is : ')
-      print (self.num_test_examples)
-      print ('num_test_batches is : ')
-      print (self.num_test_batches)
+        self.num_test_examples + self.eval_batch_size - 1) // self.eval_batch_size
       if self.data_format == "NCHW":
         x_test = tf.transpose(x_test, [0, 3, 1, 2])
       self.x_test = x_test
       self.y_test = y_test
-
 
   def eval_once(self, sess, eval_set, feed_dict=None, verbose=False):
     """Expects self.acc and self.global_step to be defined.
