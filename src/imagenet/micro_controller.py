@@ -230,8 +230,8 @@ class MicroController(Controller):
 
   def build_trainer(self, child_model):
     child_model.build_valid_rl()
-    self.valid_acc = (tf.to_float(child_model.valid_shuffle_acc) /
-                      tf.to_float(child_model.batch_size))
+    self.valid_acc = (tf.to_float(child_model.valid_shuffle_acc)) #/
+                      #tf.to_float(child_model.batch_size))
     self.reward = self.valid_acc
 
     if self.entropy_weight is not None:

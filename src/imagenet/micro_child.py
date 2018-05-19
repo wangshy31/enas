@@ -704,15 +704,6 @@ class MicroChild(Model):
     return out
 
   # override
-  def _weight_transfer_loss(self):
-      tf_variables = [
-          var for var in tf.trainable_variables() if (
-              var.name.startswith(self.name) and "aux_head" not in var.name and "conv_" in var.name)]
-      #for var in tf_variable:
-          #print (var)
-      return
-
-
 
 
   def _build_train(self):
@@ -827,9 +818,14 @@ class MicroChild(Model):
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
     valid_shuffle_preds = tf.argmax(logits, axis=1)
     valid_shuffle_preds = tf.to_int32(valid_shuffle_preds)
-    self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
-    self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
-    self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+    #self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
+    #self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
+    #self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+    log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      logits=logits, labels=y_valid_shuffle)
+    loss = tf.reduce_mean(log_probs)
+    eps = 1e-5
+    self.valid_shuffle_acc = 1.0/(loss+eps)
 
 
 

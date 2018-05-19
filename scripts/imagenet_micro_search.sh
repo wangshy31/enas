@@ -7,7 +7,7 @@ python src/imagenet/main.py \
   --search_for="micro" \
   --reset_output_dir \
   --data_path="data/cifar10" \
-  --output_dir="searching/imagenet/1_10" \
+  --output_dir="searching/imagenet/loss_as_reward" \
   --batch_size=96 \
   --num_epochs=150 \
   --log_every=10 \
