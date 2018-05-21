@@ -789,7 +789,7 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/mnt/lustre/wangshiyao/data/imagenet_1_10")
       valid_provider = slim.dataset_data_provider.DatasetDataProvider(
           val_dataset,
           num_readers=self.num_readers,
@@ -818,14 +818,15 @@ class MicroChild(Model):
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
     valid_shuffle_preds = tf.argmax(logits, axis=1)
     valid_shuffle_preds = tf.to_int32(valid_shuffle_preds)
-    #self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
-    #self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
-    #self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+    valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
+    valid_shuffle_acc = tf.to_int32(valid_shuffle_acc)
+    valid_shuffle_acc = tf.reduce_sum(valid_shuffle_acc)
+    valid_shuffle_acc = (tf.to_float(valid_shuffle_acc)) / self.batch_size
     log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
       logits=logits, labels=y_valid_shuffle)
     loss = tf.reduce_mean(log_probs)
     eps = 1e-5
-    self.valid_shuffle_acc = 1.0/(loss+eps)
+    self.valid_shuffle_acc = 1.0/(loss+eps) + valid_shuffle_acc * 10.0
 
 
 

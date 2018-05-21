@@ -243,7 +243,6 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
-        saver.restore(sess, "/home/wangshiyao/Documents/workspace/RL/program/enas/searching/imagenet/1_10/model.ckpt-143441")
         start_time = time.time()
         count = 0
         while True:

@@ -76,7 +76,7 @@ class Model(object):
     print "Build data ops"
     with tf.device("/cpu:0"):
       #read training data
-      train_dataset = dataset_factory.get_dataset("imagenet", "train", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      train_dataset = dataset_factory.get_dataset("imagenet", "train", "/mnt/lustre/wangshiyao/data/imagenet_1_10")
       provider = slim.dataset_data_provider.DatasetDataProvider(
           train_dataset,
           num_readers=self.num_readers,
@@ -107,7 +107,7 @@ class Model(object):
       self.x_train = x_train
       self.y_train = y_train
 
-      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/mnt/lustre/wangshiyao/data/imagenet_1_10")
       valid_provider = slim.dataset_data_provider.DatasetDataProvider(
           val_dataset,
           num_readers=self.num_readers,
@@ -136,7 +136,7 @@ class Model(object):
       self.y_valid = y_valid
 
 
-      test_dataset = dataset_factory.get_dataset("imagenet", "test", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      test_dataset = dataset_factory.get_dataset("imagenet", "test", "/mnt/lustre/wangshiyao/data/imagenet_1_10")
       test_provider = slim.dataset_data_provider.DatasetDataProvider(
           test_dataset,
           num_readers=self.num_readers,
