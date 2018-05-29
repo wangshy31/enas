@@ -27,8 +27,6 @@ from src.imagenet.general_child import GeneralChild
 from src.imagenet.micro_controller import MicroController
 from src.imagenet.micro_child import MicroChild
 from PIL import Image
-#from src import data
-#from src.data.imagenet_data import ImagenetData
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -243,7 +241,6 @@ def train():
     config = tf.ConfigProto(allow_soft_placement=True)
     with tf.train.SingularMonitoredSession(
       config=config, hooks=hooks, checkpoint_dir=FLAGS.output_dir) as sess:
-        saver.restore(sess, "/home/wangshiyao/Documents/workspace/RL/program/enas/searching/imagenet/1_10/model.ckpt-143441")
         start_time = time.time()
         count = 0
         while True:
@@ -256,18 +253,6 @@ def train():
             child_ops["train_op"],
           ]
           loss, lr, gn, tr_acc, _ = sess.run(run_ops)
-          #loss, lr, gn, tr_acc, x_train,  _ = sess.run(run_ops)
-          #print (x_train.shape)
-          #for i in range(16):
-              #tmp = np.squeeze(x_train[i, : , : ,:])
-              #tmp = np.transpose(tmp, [1, 2, 0])
-              #tmp = (tmp/2.0+0.5)*255.0
-              #print ('begin transform')
-              #tmp = tmp.astype(np.uint8)
-              #print ('end transform')
-              #img = Image.fromarray(tmp, 'RGB')
-              #img.save('results/'+str(i)+'.png')
-
           global_step = sess.run(child_ops["global_step"])
 
           if FLAGS.child_sync_replicas:

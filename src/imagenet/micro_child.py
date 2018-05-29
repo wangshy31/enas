@@ -21,8 +21,6 @@ from src.imagenet.image_ops import global_avg_pool
 from src.utils import count_model_params
 from src.utils import get_train_ops
 from src.common_ops import create_weight
-from src.imagenet.imagenet_data import ImagenetData
-import src.imagenet.image_processing as image_processing
 from datasets import dataset_factory
 from preprocessing import preprocessing_factory
 slim = tf.contrib.slim
@@ -714,7 +712,6 @@ class MicroChild(Model):
       logits=logits, labels=self.y_train)
     self.loss = tf.reduce_mean(log_probs)
 
-    #self._weight_transfer_loss()
 
     if self.use_aux_heads:
       log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -733,8 +730,6 @@ class MicroChild(Model):
     tf_variables = [
       var for var in tf.trainable_variables() if (
         var.name.startswith(self.name) and "aux_head" not in var.name)]
-    #print ('tf_variables!!!!!!!!')
-    #print (tf_variables)
     self.num_vars = count_model_params(tf_variables)
     print("Model has {0} params".format(self.num_vars))
 
@@ -789,7 +784,7 @@ class MicroChild(Model):
     print("Build valid graph on shuffled data")
     with tf.device("/cpu:0"):
       # shuffled valid data: for choosing validation model
-      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/home/wangshiyao/Documents/data/imagenet/cls_tf/1_10")
+      val_dataset = dataset_factory.get_dataset("imagenet", "validation", "/mnt/lustre/wangshiyao/data/imagenet_1_10")
       valid_provider = slim.dataset_data_provider.DatasetDataProvider(
           val_dataset,
           num_readers=self.num_readers,
@@ -816,16 +811,21 @@ class MicroChild(Model):
       y_valid_shuffle = y_valid
 
     logits = self._model(x_valid_shuffle, is_training=True, reuse=True)
+    #generate eval accuray
     valid_shuffle_preds = tf.argmax(logits, axis=1)
     valid_shuffle_preds = tf.to_int32(valid_shuffle_preds)
-    #self.valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
-    #self.valid_shuffle_acc = tf.to_int32(self.valid_shuffle_acc)
-    #self.valid_shuffle_acc = tf.reduce_sum(self.valid_shuffle_acc)
+    valid_shuffle_acc = tf.equal(valid_shuffle_preds, y_valid_shuffle)
+    valid_shuffle_acc = tf.to_int32(valid_shuffle_acc)
+    valid_shuffle_acc = tf.reduce_sum(valid_shuffle_acc)
+    valid_shuffle_acc = tf.to_float(valid_shuffle_acc)/ self.eval_batch_size
+    #generate loss value
     log_probs = tf.nn.sparse_softmax_cross_entropy_with_logits(
       logits=logits, labels=y_valid_shuffle)
     loss = tf.reduce_mean(log_probs)
+
+    #original valid_shuffle_acc is modified to 10*acc + 1/loss
     eps = 1e-5
-    self.valid_shuffle_acc = 1.0/(loss+eps)
+    self.valid_shuffle_acc = 10.0 * valid_shuffle_acc + 1.0/(loss+eps)
 
 
 
